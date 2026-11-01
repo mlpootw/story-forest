@@ -41,7 +41,7 @@
 
 點這個按鈕：
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/YOUR_GITHUB_NAME/story-forest)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/mlpootw/story-forest)
 
 1. 用 GitHub 登入 Netlify，並允許它在你的 GitHub 建立一份副本。
 2. 頁面會請你填兩個欄位：
