@@ -549,4 +549,107 @@ grant execute on function public.is_family_owner(uuid) to authenticated;
 grant execute on function public.shares_family_with(uuid) to authenticated;
 grant execute on function public.my_family_id() to authenticated;
 
+-- =====================================================================
+-- 7. 繪本封面照片儲存空間（第三階段）
+-- =====================================================================
+
+-- 封面儲存空間：只收壓縮後的 WebP / JPEG，每張最大 300 KB
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('covers', 'covers', true, 307200, array['image/webp', 'image/jpeg'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- 檔案路徑固定為「家庭編號/檔名」，只有該家庭的家長能上傳、刪除自己的封面
+create or replace function public.cover_folder_is_mine(p_name text)
+returns boolean language plpgsql stable security definer set search_path = '' as $$
+declare v_folder text := split_part(p_name, '/', 1);
+begin
+  if v_folder !~ '^[0-9a-f-]{36}$' then return false; end if;
+  return public.is_family_member(v_folder::uuid);
+end $$;
+revoke execute on function public.cover_folder_is_mine(text) from public, anon;
+grant execute on function public.cover_folder_is_mine(text) to authenticated;
+
+drop policy if exists covers_insert on storage.objects;
+drop policy if exists covers_update on storage.objects;
+drop policy if exists covers_delete on storage.objects;
+
+create policy covers_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'covers' and public.cover_folder_is_mine(name));
+create policy covers_update on storage.objects for update to authenticated
+  using (bucket_id = 'covers' and public.cover_folder_is_mine(name))
+  with check (bucket_id = 'covers' and public.cover_folder_is_mine(name));
+create policy covers_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'covers' and public.cover_folder_is_mine(name));
+
+-- =====================================================================
+-- 8. 每月選一棵樹（第四階段）
+-- =====================================================================
+
+create table if not exists public.tree_choices (
+  child_id   uuid not null references public.children(id) on delete cascade,
+  family_id  uuid not null references public.families(id) on delete cascade,
+  month      date not null check (extract(day from month) = 1),
+  species    text not null check (species in ('banana','guava','mango','pomelo','waxapple','sakura')),
+  chosen_at  timestamptz not null default now(),
+  primary key (child_id, month)
+);
+create index if not exists tree_choices_family_idx on public.tree_choices(family_id);
+
+-- 家庭編號一律從孩子帶入，無法偽造
+create or replace function public.tree_choices_fill()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  select c.family_id into new.family_id from public.children c where c.id = new.child_id;
+  if new.family_id is null then raise exception 'child_not_found'; end if;
+  new.month := date_trunc('month', new.month)::date;
+  return new;
+end $$;
+drop trigger if exists tree_choices_fill on public.tree_choices;
+create trigger tree_choices_fill before insert or update on public.tree_choices
+  for each row execute function public.tree_choices_fill();
+
+alter table public.tree_choices enable row level security;
+drop policy if exists tree_choices_select on public.tree_choices;
+drop policy if exists tree_choices_insert on public.tree_choices;
+drop policy if exists tree_choices_update on public.tree_choices;
+drop policy if exists tree_choices_delete on public.tree_choices;
+create policy tree_choices_select on public.tree_choices for select to authenticated using (public.is_family_member(family_id));
+create policy tree_choices_insert on public.tree_choices for insert to authenticated with check (public.is_family_member(family_id));
+create policy tree_choices_update on public.tree_choices for update to authenticated using (public.is_family_member(family_id)) with check (public.is_family_member(family_id));
+create policy tree_choices_delete on public.tree_choices for delete to authenticated using (public.is_family_member(family_id));
+
+revoke all on public.tree_choices from anon;
+grant select, insert, update, delete on public.tree_choices to authenticated;
+
+-- 匯出資料加入每月選的樹
+create or replace function public.export_my_data()
+returns jsonb language sql stable security invoker set search_path = '' as $$
+  with f as (select public.my_family_id() as id)
+  select jsonb_build_object(
+    'exported_at', now(),
+    'family', (select jsonb_build_object('name', fa.name, 'created_at', fa.created_at)
+               from public.families fa, f where fa.id = f.id),
+    'parents', (select coalesce(jsonb_agg(jsonb_build_object('display_name', p.display_name, 'role', m.role, 'joined_at', m.joined_at)), '[]'::jsonb)
+                from public.family_members m join public.profiles p on p.id = m.user_id, f where m.family_id = f.id),
+    'children', (select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'nickname', c.nickname, 'birth_ym', to_char(c.birth_ym, 'YYYY-MM'), 'age_band', c.age_band) order by c.created_at), '[]'::jsonb)
+                 from public.children c, f where c.family_id = f.id),
+    'child_books', (select coalesce(jsonb_agg(jsonb_build_object(
+                      'child_id', cb.child_id, 'title', b.title, 'authors', b.authors, 'publisher', b.publisher,
+                      'isbn13', b.isbn13, 'category', cb.category_id, 'secondary_tags', cb.secondary_tags,
+                      'favorite', cb.is_favorite, 'note', cb.parent_note)), '[]'::jsonb)
+                    from public.child_books cb join public.books b on b.id = cb.book_id, f where cb.family_id = f.id),
+    'reading_sessions', (select coalesce(jsonb_agg(jsonb_build_object(
+                           'child_id', s.child_id, 'title', b.title, 'read_on', s.read_on, 'mood', s.mood, 'note', s.note)
+                           order by s.read_on), '[]'::jsonb)
+                         from public.reading_sessions s join public.books b on b.id = s.book_id, f where s.family_id = f.id),
+    'tree_choices', (select coalesce(jsonb_agg(jsonb_build_object('child_id', t.child_id, 'month', to_char(t.month, 'YYYY-MM'), 'species', t.species) order by t.month), '[]'::jsonb)
+                     from public.tree_choices t, f where t.family_id = f.id)
+  );
+$$;
+revoke execute on function public.export_my_data() from public, anon;
+grant execute on function public.export_my_data() to authenticated;
+
 -- 完成！
