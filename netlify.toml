@@ -1,0 +1,24 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 單頁應用：任何網址都回到 index.html（Supabase 重設密碼連結需要）
+# 一鍵部署時，Netlify 會請家長填這兩個值
+[template.environment]
+  VITE_SUPABASE_URL = "Supabase 的 Project URL（https://xxxx.supabase.co）"
+  VITE_SUPABASE_ANON_KEY = "Supabase 的 Publishable key 或 anon key（不要填 secret / service_role）"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

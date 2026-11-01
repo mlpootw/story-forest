@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { min-height: 100%; }
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .47 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  #root { position: relative; z-index: 1; }
+  :focus-visible { outline: 2px solid #D6B65E; outline-offset: 2px; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+}
+
+@layer components {
+  .page { @apply mx-auto w-full max-w-[480px]; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full bg-sage px-5 py-2.5 font-medium text-white transition active:scale-[.98] disabled:opacity-50 disabled:active:scale-100; }
+  .btn-ghost { @apply btn border border-line bg-transparent text-ink; }
+  .btn-gold { @apply btn bg-gold text-[#4A3F2E]; }
+  .btn-danger { @apply btn bg-danger; }
+  .btn-block { @apply w-full py-3 text-base; }
+  .field { @apply flex flex-col gap-1 text-[13px] text-ink-soft; }
+  .input { @apply w-full rounded-xl border border-line bg-paper-card px-3 py-2.5 text-[15px] text-ink outline-none focus:border-sage; }
+  .h-hand { @apply font-hand font-bold tracking-wide; }
+  .section { @apply border-b border-line py-5; }
+  .hint { @apply text-[12.5px] leading-relaxed text-ink-soft; }
+  .notice { @apply rounded-2xl bg-sage-mist px-4 py-3 text-[13.5px] leading-relaxed; }
+  .error-box { @apply rounded-2xl bg-[#F4E4DF] px-4 py-3 text-[13.5px] leading-relaxed text-[#7A4B40]; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
