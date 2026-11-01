@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { ageText } from '../lib/ages'
-import { ymd, ymOf } from '../lib/books'
 import { Avatar, Seedling, Sheet } from '../components/ui'
 import AddBookSheet from '../components/AddBookSheet'
 import FamilySettings from './FamilySettings'
 import Library from './Library'
 import Calendar from './Calendar'
+import Garden from './Garden'
 
 const TABS = [
   ['garden', '我的花園', <path key="g" d="M12 21v-7M12 14c-3 0-5.5-2-5.5-5S9 3 12 3s5.5 3 5.5 6-2.5 5-5.5 5zM5 21h14" />],
@@ -47,7 +46,7 @@ export default function Shell({ session, data, reload }) {
       </header>
 
       <main className="pt-2">
-        {tab === 'garden' && <Garden child={child} refresh={refresh} onAdd={() => setAdd({})} />}
+        {tab === 'garden' && <Garden key={child.id} child={child} family={family} refresh={refresh} onChanged={bump} onAdd={() => setAdd({})} />}
         {tab === 'calendar' && <Calendar child={child} refresh={refresh} onChanged={bump} onAddOn={(date) => setAdd({ date })} />}
         {tab === 'library' && <Library child={child} family={family} refresh={refresh} onChanged={bump} onAdd={() => setAdd({})} />}
         {tab === 'report' && (
@@ -89,37 +88,5 @@ function TabBtn({ on, label, d, onClick }) {
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
       {label}
     </button>
-  )
-}
-
-// 我的花園：第四階段才會畫出真正的閱讀樹，這裡先顯示本月進度
-function Garden({ child, refresh, onAdd }) {
-  const ym = ymOf(ymd())
-  const [tree, setTree] = useState(undefined)
-  useEffect(() => {
-    let alive = true
-    supabase.from('reading_trees').select('distinct_books, total_sessions, reading_days').eq('child_id', child.id).eq('month', ym + '-01').maybeSingle()
-      .then(({ data }) => alive && setTree(data || { distinct_books: 0, total_sessions: 0, reading_days: 0 }))
-    return () => { alive = false }
-  }, [child.id, ym, refresh])
-  const [y, m] = ym.split('-')
-  const n = tree?.distinct_books || 0
-  const stage = n === 0 ? '等待第一片葉子' : n < 3 ? '種子與初生葉' : n < 8 ? '萌芽' : n < 15 ? '小樹' : n < 25 ? '茂盛的樹' : '成熟大樹'
-  return (
-    <div>
-      <h2 className="h-hand text-center text-[22px]">{y} 年 {Number(m)} 月</h2>
-      <p className="text-center text-[13px] text-ink-soft">{child.nickname}{ageText(child) && ` · ${ageText(child)}`}</p>
-      <Seedling className="mx-auto my-6 w-56" />
-      <p className="h-hand text-center text-base text-sage-deep">{stage}</p>
-      {tree && (
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          {[['不同繪本', tree.distinct_books], ['共讀次數', tree.total_sessions], ['共讀天數', tree.reading_days]].map(([t, v]) => (
-            <div key={t} className="rounded-2xl bg-paper-2 py-2.5"><b className="h-hand block text-2xl tabular-nums">{v}</b><span className="text-xs text-ink-soft">{t}</span></div>
-          ))}
-        </div>
-      )}
-      {tree && n === 0 && <div className="mt-5 text-center"><button className="btn" onClick={onAdd}>＋ 記錄今天讀的繪本</button></div>}
-      <p className="hint mt-6 text-center">第四階段：這裡會長出依真實紀錄生成的水彩閱讀樹。<br />樹的大小只是紀錄的樣子，不是要達成的目標。</p>
-    </div>
   )
 }

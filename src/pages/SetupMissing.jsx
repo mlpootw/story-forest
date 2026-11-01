@@ -9,9 +9,9 @@ export default function SetupMissing() {
       <div className="notice mt-5">
         <p>網站已經成功部署，但還缺少 Supabase 的連線設定。</p>
         <ol className="mt-2 list-decimal pl-5">
-          <li>到 Netlify 這個網站的 <b>Site configuration → Environment variables</b></li>
+          <li>到 Cloudflare 這個 Pages 專案的 <b>Settings → Variables and Secrets</b></li>
           <li>新增 <code>VITE_SUPABASE_URL</code> 與 <code>VITE_SUPABASE_ANON_KEY</code></li>
-          <li>到 <b>Deploys</b> 按 <b>Trigger deploy → Deploy site</b> 重新部署</li>
+          <li>到 <b>Deployments</b>，在最新一筆按 <b>⋯ → Retry deployment</b> 重新部署</li>
         </ol>
       </div>
       <p className="hint mt-4 text-center">請只填 anon（publishable）金鑰，不要填 service_role。</p>
