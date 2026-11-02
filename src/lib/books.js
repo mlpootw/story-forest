@@ -4,50 +4,55 @@ import { supabase } from './supabase'
 /* ---------- 八大分類（id 與資料庫 book_categories 一致） ---------- */
 export const CATEGORIES = [
   { id: 'emotion', name: '情緒與自我認識', color: '#C88F99',
-    zh: ['情緒', '生氣', '害怕', '膽小', '哭', '心情', '勇敢', '難過', '傷心', '自信', '脾氣', '開心', '嫉妒', '孤單', '我自己', '做自己', '感覺'],
-    en: ['emotions', 'feelings', 'self-esteem', 'self-perception', 'fear', 'anger'] },
+    zh: ['情緒', '生氣', '害怕', '膽小', '哭', '心情', '勇敢', '難過', '傷心', '自信', '脾氣', '開心', '快樂', '嫉妒', '孤單', '寂寞', '做自己', '感覺', '愛', '抱抱', '擔心', '緊張', '不一樣', '我是', '我的', '喜歡自己', '分離', '想念', '媽媽', '爸爸', '怕'],
+    en: ['emotion', 'feeling', 'self-esteem', 'self-perception', 'fear', 'anger', 'love', 'happiness', 'sadness', 'self'] },
   { id: 'social', name: '人際與社交', color: '#D5A57C',
-    zh: ['朋友', '友誼', '分享', '一起', '合作', '幫忙', '幫助', '輪流', '等待', '鄰居', '禮貌', '吵架', '道歉', '家人', '兄弟', '姊妹', '弟弟', '妹妹', '同學', '上學'],
-    en: ['friendship', 'social themes', 'sharing', 'manners', 'siblings', 'family', 'school'] },
+    zh: ['朋友', '友誼', '好朋友', '分享', '一起', '合作', '幫忙', '幫助', '輪流', '等待', '鄰居', '禮貌', '吵架', '道歉', '家人', '家庭', '兄弟', '姊妹', '姐姐', '哥哥', '弟弟', '妹妹', '同學', '上學', '幼兒園', '學校', '老師', '派對', '生日', '大家', '客人', '飯店', '旅館', '拜訪'],
+    en: ['friendship', 'social', 'sharing', 'manners', 'sibling', 'family', 'school', 'kindness', 'cooperation', 'neighbor'] },
   { id: 'nature', name: '自然與科學', color: '#83A48A',
-    zh: ['動物', '植物', '昆蟲', '雨', '樹', '葉子', '花', '蝸牛', '螢火蟲', '種子', '海洋', '大海', '科學', '天氣', '森林', '恐龍', '身體', '季節', '小鳥', '青蛙', '宇宙', '星星', '太空'],
-    en: ['animals', 'nature', 'science', 'insects', 'dinosaurs', 'plants', 'weather', 'seasons', 'ocean', 'space'] },
+    zh: ['動物', '植物', '昆蟲', '雨', '樹', '森林', '葉子', '花', '草', '種子', '發芽', '蝸牛', '螢火蟲', '蝴蝶', '毛毛蟲', '蜜蜂', '螞蟻', '鳥', '鴨', '鵝', '熊', '兔', '狐狸', '刺蝟', '松鼠', '老鼠', '貓', '狗', '豬', '牛', '羊', '馬', '雞', '魚', '鯨', '海', '河', '湖', '青蛙', '烏龜', '恐龍', '大象', '獅子', '老虎', '猴', '企鵝', '科學', '天氣', '季節', '春', '夏', '秋', '冬', '雪', '風', '雲', '星星', '月亮', '太陽', '宇宙', '太空', '地球', '身體', '水'],
+    en: ['animal', 'nature', 'science', 'insect', 'dinosaur', 'plant', 'weather', 'season', 'ocean', 'space', 'bird', 'bear', 'rabbit', 'fox', 'cat', 'dog', 'pig', 'fish', 'frog', 'tree', 'earth'] },
   { id: 'vehicle', name: '交通與機械', color: '#D6B65E',
-    zh: ['汽車', '火車', '挖土機', '工程車', '吊車', '卡車', '公車', '消防車', '救護車', '警車', '飛機', '機器', '機械', '工地', '引擎', '捷運', '垃圾車', '車子'],
-    en: ['transportation', 'vehicles', 'trucks', 'trains', 'cars', 'machines', 'construction', 'airplanes'] },
+    zh: ['汽車', '車子', '火車', '電車', '高鐵', '捷運', '公車', '巴士', '挖土機', '怪手', '工程車', '吊車', '卡車', '消防車', '救護車', '警車', '垃圾車', '飛機', '直升機', '船', '潛水艇', '火箭', '機器', '機器人', '機械', '工地', '引擎', '腳踏車', '摩托車', '交通', '紅綠燈', '馬路', '車'],
+    en: ['transportation', 'vehicle', 'truck', 'train', 'car', 'machine', 'construction', 'airplane', 'boat', 'rocket', 'robot', 'bus', 'tractor'] },
   { id: 'life', name: '生活與習慣', color: '#A5B6A0',
-    zh: ['刷牙', '睡覺', '睡前', '晚安', '吃飯', '挑食', '洗澡', '上廁所', '尿布', '習慣', '起床', '收拾', '穿衣', '生病', '看醫生', '安全'],
-    en: ['bedtime', 'health & daily living', 'toilet training', 'hygiene', 'daily activities', 'personal safety'] },
+    zh: ['刷牙', '牙齒', '睡覺', '睡前', '晚安', '睡不著', '吃飯', '挑食', '蔬菜', '食物', '洗澡', '洗手', '上廁所', '尿布', '便便', '尿尿', '習慣', '起床', '早安', '收拾', '整理', '穿衣', '衣服', '鞋子', '生病', '看醫生', '打針', '安全', '過馬路', '購物', '買菜', '煮飯', '廚房', '做菜', '一天', '自己來', '牙醫', '醫生', '買東西', '上街', '跑腿', '第一次', '長大'],
+    en: ['bedtime', 'goodnight', 'good night', 'daily living', 'health', 'toilet', 'hygiene', 'daily activities', 'safety', 'food', 'sleep', 'manners'] },
   { id: 'imagination', name: '想像與創造', color: '#AD9DBD',
-    zh: ['想像', '魔法', '奇幻', '冒險', '夢', '怪獸', '巫婆', '公主', '王子', '童話', '發明', '畫畫', '創作', '神奇', '飛'],
-    en: ['imagination', 'fantasy', 'magic', 'fairy tales', 'monsters', 'adventure', 'art'] },
+    zh: ['想像', '魔法', '魔術', '奇幻', '冒險', '夢', '怪獸', '怪物', '巫婆', '女巫', '公主', '王子', '國王', '童話', '仙子', '精靈', '龍', '發明', '畫畫', '畫', '顏料', '創作', '神奇', '飛', '寶藏', '海盜', '城堡', '外星人', '秘密', '如果'],
+    en: ['imagination', 'fantasy', 'magic', 'fairy tale', 'monster', 'adventure', 'art', 'dragon', 'pirate', 'princess', 'dream'] },
   { id: 'cognition', name: '認知與思考', color: '#8EAEBB',
-    zh: ['數數', '數一數', '數字', '形狀', '顏色', '大小', '分類', '比較', '認識', 'ABC', '字母', '躲貓貓', '找一找', '時間', '左右', '相反'],
-    en: ['concepts', 'counting', 'numbers', 'colors', 'shapes', 'alphabet', 'opposites', 'size'] },
+    zh: ['數數', '數一數', '數字', '算數', '形狀', '顏色', '大小', '分類', '比較', '認識', '字母', '注音', 'ABC', '躲貓貓', '找一找', '在哪裡', '時間', '時鐘', '左右', '上下', '相反', '問題', '為什麼', '怎麼', '思考', '謎', '迷宮', '拼圖', '幾個', '一二三'],
+    en: ['concept', 'counting', 'number', 'color', 'shape', 'alphabet', 'opposite', 'size', 'time', 'puzzle', 'abc'] },
   { id: 'culture', name: '文化與世界', color: '#BE9582',
-    zh: ['外婆', '阿嬤', '奶奶', '爺爺', '節日', '過年', '新年', '中秋', '端午', '傳統', '世界', '各地', '台灣', '國家', '歷史', '民俗'],
-    en: ['holidays', 'festivals', 'customs', 'cultural', 'people & places', 'history', 'multicultural'] }
+    zh: ['外婆', '外公', '阿嬤', '阿公', '奶奶', '爺爺', '節日', '過年', '新年', '春節', '年獸', '紅包', '中秋', '端午', '粽子', '元宵', '燈籠', '聖誕', '萬聖', '傳統', '世界', '各地', '台灣', '臺灣', '國家', '歷史', '民俗', '廟', '神明', '旅行', '地圖', '故鄉', '老街'],
+    en: ['holiday', 'festival', 'custom', 'cultur', 'people & places', 'history', 'multicultural', 'christmas', 'travel', 'world'] }
 ]
 export const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
 export const UNKNOWN_CAT = { id: null, name: '待確認分類', color: '#C9BFAF' }
 export const catOf = (id) => CAT[id] || UNKNOWN_CAT
 
-// 不使用 AI：用書名、介紹、主題關鍵字打分數；分數太低就回報「待確認」
+// 簡體字轉繁體（只涵蓋分類關鍵字用到的字），讓簡體的書籍介紹也能判斷
+const S_CHARS = "来个传伤儿创动问单国园图梦妈嬷学宫宝对师帮几厕厨庙张爱惯担数时乐样树机欢历气潜湾为乌灯爷状狮兽画发盗礼种节笼红统绿紧绪习圣脚胆台万叶猬蜗蚂萤虫蚁术里觉访话认诞谊谜识护猪猫买购车较轮运过乡邻医针钟铁开间阳险鸡离难云电灵题颜类风飞饭馆马体鱼鲸鸟鸭鹅么齿龙龟"
+const T_CHARS = "來個傳傷兒創動問單國園圖夢媽嬤學宮寶對師幫幾廁廚廟張愛慣擔數時樂樣樹機歡歷氣潛灣為烏燈爺狀獅獸畫發盜禮種節籠紅統綠緊緒習聖腳膽臺萬葉蝟蝸螞螢蟲蟻術裡覺訪話認誕誼謎識護豬貓買購車較輪運過鄉鄰醫針鐘鐵開間陽險雞離難雲電靈題顏類風飛飯館馬體魚鯨鳥鴨鵝麼齒龍龜"
+const toTrad = (t) => t.replace(/./gu, (c) => { const i = S_CHARS.indexOf(c); return i >= 0 ? T_CHARS[i] : c })
+
+// 不使用 AI：用書名、介紹、主題關鍵字打分數；完全沒線索才回報「待確認」
 export function suggestCategory(book) {
-  const title = (book.title || '') + ' ' + (book.subtitle || '')
-  const desc = book.description || ''
-  const subjects = (book.subjects || []).join(' | ').toLowerCase()
+  const title = toTrad((book.title || '') + ' ' + (book.subtitle || ''))
+  const desc = toTrad(book.description || '')
+  const en = ((book.subjects || []).join(' | ') + ' ' + (book.title || '') + ' ' + (book.description || '')).toLowerCase()
   let best = null
   for (const c of CATEGORIES) {
     let score = 0
     const hits = []
     for (const k of c.zh) {
-      if (title.includes(k)) { score += 3; hits.push(k) } else if (desc.includes(k)) { score += 1; hits.push(k) }
+      if (title.includes(k)) { score += 3 + (k.length > 1 ? 1 : 0); hits.push(k) } else if (desc.includes(k)) { score += k.length > 1 ? 1 : 0.5; hits.push(k) }
     }
-    for (const k of c.en) if (subjects.includes(k)) { score += 2; hits.push(k) }
+    for (const k of c.en) if (en.includes(k)) { score += 1.5; hits.push(k) }
     if (score > 0 && (!best || score > best.score)) best = { id: c.id, score, hits: [...new Set(hits)].slice(0, 4) }
   }
-  return best && best.score >= 2 ? best : null
+  return best && best.score >= 1 ? best : null
 }
 
 /* ---------- ISBN ---------- */
