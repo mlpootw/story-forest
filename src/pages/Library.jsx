@@ -6,6 +6,7 @@ import { CATEGORIES, catOf, ymd, dayLabel, MOODS } from '../lib/books'
 import { addSession } from '../lib/records'
 import Cover from '../components/Cover'
 import { Sheet } from '../components/ui'
+import { isEnglishBook } from '../lib/visitors'
 
 export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const [items, setItems] = useState(null)
@@ -18,7 +19,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const load = useCallback(async () => {
     setError('')
     const { data, error: err } = await supabase.from('child_books')
-      .select('id, category_id, is_favorite, parent_note, created_at, books(*), reading_sessions(id, read_on, mood, note)')
+      .select('id, category_id, is_favorite, parent_note, is_english, created_at, books(*), reading_sessions(id, read_on, mood, note)')
       .eq('child_id', child.id)
     if (err) return setError(zhError(err))
     setItems(data.map((x) => {
@@ -112,7 +113,7 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
     setBusy('again')
     try {
       const { newLeaf } = await addSession({ childBookId: item.id, childId: child.id, bookId: b.id, familyId: family.id, readOn: ymd() })
-      toast(newLeaf ? '這個月第一次讀，樹上會多一片葉子 🌱' : '又讀了一次！葉子會亮起微光 ✨')
+      toast(newLeaf ? '記好了！樹上多了一個花苞，等孩子來澆水 💧' : '又讀了一次！葉子會亮起微光 ✨')
       onChanged()
     } catch (e) { toast(zhError(e)) } finally { setBusy('') }
   }
@@ -142,6 +143,15 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
             <i className="h-3 w-3 shrink-0 rounded-[12px_2px_12px_2px]" style={{ background: c.color }} />{c.name}
           </button>
         ))}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-paper-2 px-4 py-3">
+        <p className="text-sm">英文書<span className="block text-xs text-ink-soft">英文書會帶一位森林訪客來教單字</span></p>
+        <button role="switch" aria-checked={isEnglishBook(item, b)} aria-label="英文書" disabled={!!busy}
+          onClick={() => run('en', () => supabase.from('child_books').update({ is_english: !isEnglishBook(item, b) }).eq('id', item.id), '已更新')}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition ${isEnglishBook(item, b) ? 'bg-sage' : 'bg-paper-3'}`}>
+          <span className={`absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-all ${isEnglishBook(item, b) ? 'left-[23px]' : 'left-[3px]'}`} />
+        </button>
       </div>
 
       <label className="field mt-5">家長觀察備註（例如孩子最喜歡哪一頁）
