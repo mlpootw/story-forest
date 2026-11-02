@@ -46,16 +46,18 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
   const leaves = useMemo(() => {
     const m = new Map()
     for (const r of rows) {
-      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, en: isEnglishBook(r.child_books, r.books), favorite: !!r.child_books?.is_favorite, first: r.read_on, sessions: [] })
+      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, en: isEnglishBook(r.child_books, r.books), favorite: !!r.child_books?.is_favorite, mag: r.books?.kind === 'magazine', first: r.read_on, sessions: [] })
       m.get(r.child_book_id).sessions.push(r)
     }
     return [...m.values()].map((l) => {
       const base = { ...l, count: l.sessions.length, shown: l.sessions.some((s) => s.growth_shown_at) }
-      return { ...base, fruit: !!fruitReason(base) }
+      return { ...base, fruit: !base.mag && !!fruitReason(base) }
     })
   }, [rows])
 
-  const visitors = useMemo(() => buildVisitors(leaves.filter((l) => l.shown), child.id, ym, speciesId, hashStr), [leaves, child.id, ym, speciesId])
+  const bookLeaves = useMemo(() => leaves.filter((l) => !l.mag), [leaves])
+  const flowers = useMemo(() => leaves.filter((l) => l.mag), [leaves])
+  const visitors = useMemo(() => buildVisitors(bookLeaves.filter((l) => l.shown), child.id, ym, speciesId, hashStr), [bookLeaves, child.id, ym, speciesId])
   const [guest, setGuest] = useState(null)
   const pendingIds = useMemo(() => leaves.filter((l) => !l.shown).map((l) => l.id), [leaves])
   const pendingSessions = rows.filter((r) => !r.growth_shown_at)
@@ -91,9 +93,10 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
     const after = leaves.map((l) => (flashLeaves.includes(l.id) ? { ...l, count: l.count } : l))
     const popLeaves = after.filter((l) => (growLeaves.includes(l.id) || flashLeaves.includes(l.id)) && l.fruit).map((l) => l.id)
     setAnim({ grow: growLeaves, flash: flashLeaves, pop: popLeaves })
-    const newGuests = leaves.filter((l) => growLeaves.includes(l.id) && l.en).length
+    const newGuests = leaves.filter((l) => growLeaves.includes(l.id) && l.en && !l.mag).length
+    const newFlowers = leaves.filter((l) => (growLeaves.includes(l.id) || flashLeaves.includes(l.id)) && l.mag).length
     const sp = SPECIES[speciesId]
-    say(newGuests ? `森林訪客來了！點點牠 🐰` : popLeaves.length ? `驚喜！${sp.verb ? '開出' : '結出'}${sp.fruitName}了！` : growLeaves.length ? `長出 ${growLeaves.length} 片新葉子！` : '葉子亮起來了 ✨')
+    say(newGuests ? `森林訪客來了！點點牠 🐰` : newFlowers && !growLeaves.some((id) => !leaves.find((l) => l.id === id)?.mag) ? '樹下的雜誌花又長大了 🌼' : popLeaves.length ? `驚喜！${sp.verb ? '開出' : '結出'}${sp.fruitName}了！` : growLeaves.length ? `長出 ${growLeaves.length} 片新葉子！` : '葉子亮起來了 ✨')
   }
 
   // ---- 拖水壺倒水 ----
@@ -199,7 +202,7 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
             <div ref={skyRef} style={{ '--sf-fill': fill }} className={`sf-sky relative mt-2 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[28px] transition-colors duration-700 sf-sky-${weather} ${fill > 0 ? 'is-drinking' : ''} ${drag?.over ? 'is-pouring' : ''}`}>
               <WeatherLayer weather={weather} />
               <div className="relative w-full">
-                <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={leaves} className="mx-0"
+                <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} className="mx-0"
                   pendingIds={pendingIds} growIds={anim.grow} flashIds={anim.flash} popIds={anim.pop}
                   onPick={(id) => setBig(leaves.find((l) => l.id === id))}
                   visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />

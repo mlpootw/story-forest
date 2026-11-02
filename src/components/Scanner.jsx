@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import { BarcodeFormat, DecodeHintType } from '@zxing/library'
 
-// 用手機後鏡頭掃描書背 ISBN 條碼（EAN-13，978/979 開頭）
+// 用手機後鏡頭掃描書背 ISBN 條碼（EAN-13，978/979 開頭）；雜誌 ISSN 是 977 開頭
 export default function Scanner({ onDetected }) {
   const videoRef = useRef(null)
   const [status, setStatus] = useState('starting') // starting | scanning | denied | unsupported | error
@@ -19,7 +19,7 @@ export default function Scanner({ onDetected }) {
         controls = ctrl
         if (done || !result) return
         const text = result.getText()
-        if (/^97[89]\d{10}$/.test(text)) {
+        if (/^97[789]\d{10}$/.test(text)) {
           done = true
           navigator.vibrate?.(60)
           ctrl.stop()

@@ -103,7 +103,7 @@ function buildBanana(seed, stage) {
 }
 
 /* ---------- 組合成 SVG ---------- */
-function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = [], flashIds = [], popIds = [], visitors = [] }) {
+function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = [], flashIds = [], popIds = [], visitors = [], flowers = [] }) {
   const sp = SPECIES[speciesId] || SPECIES.guava
   const n = leaves.length
   const stage = stageOf(n)
@@ -138,10 +138,10 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
     const h = 6 + r() * 10
     grass += `<path d="M${f1(x)},336 q${f1(r() * 4 - 2)},-${f1(h / 2)} ${f1(r() * 6 - 3)},-${f1(h)}" stroke="#83A48A" stroke-width="1.2" fill="none" opacity=".7" stroke-linecap="round"/>`
   }
-  let flowers = ''
+  let groundFlowers = ''
   const fr = rng(hashStr('f' + ym))
   const fallenLike = season.flower === 'fallen' || season.flower === 'maple'
-  for (let i = 0; i < (fallenLike ? 9 : 6); i++) flowers += groundFlower(season.flower, 60 + fr() * 240, 334 + fr() * 6, fr())
+  for (let i = 0; i < (fallenLike ? 9 : 6); i++) groundFlowers += groundFlower(season.flower, 60 + fr() * 240, 334 + fr() * 6, fr())
 
   const lv = placed.map(({ l, p, rot }) => {
     const c = catOf(l.cat)
@@ -174,6 +174,30 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
     const flip = x > BASE_X ? -1 : 1
     return `<g class="sf-visitor" data-visitor="${v.id}" transform="translate(${x},${334 + (i % 2) * 3}) scale(${flip * 0.95},0.95)" style="animation-delay:${(i * 0.7).toFixed(1)}s"><rect x="-14" y="-30" width="28" height="32" fill="transparent"/>${visitorSvg(v.animal)}</g>`
   }).join('')
+  // 雜誌：樹下的花，讀越多次開得越大
+  const fSpots = [146, 216, 122, 240, 168, 196, 104, 258]
+  const blooms = flowers.slice(0, 8).map((f, i) => {
+    const x = fSpots[i] + ((hashStr(f.id) % 7) - 3)
+    const c = catOf(f.cat).color
+    const pending = pendingIds.includes(f.id)
+    const lvl = pending ? 0 : f.count >= 10 ? 4 : f.count >= 6 ? 3 : f.count >= 3 ? 2 : 1
+    const h = [12, 16, 22, 28, 34][lvl]
+    const r = [0, 3.2, 4.6, 6, 7.2][lvl]
+    const stem = `<path d="M0,0 C-1.5,-${h * 0.4} 1.5,-${h * 0.7} 0,-${h}" stroke="#7FA27F" stroke-width="1.6" fill="none"/>`
+      + `<path d="M0,-${(h * 0.45).toFixed(1)} c4,-3 8,-2 9,1 c-4,2 -7,1 -9,-1z" fill="#8FB08A"/>`
+      + (lvl >= 2 ? `<path d="M0,-${(h * 0.3).toFixed(1)} c-4,-3 -8,-2 -9,1 c4,2 7,1 9,-1z" fill="#8FB08A"/>` : '')
+    let head
+    if (lvl === 0) head = `<ellipse class="sf-fbud" cy="-${h + 3}" rx="3" ry="4.5" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 1.6"/>`
+    else if (lvl === 1) head = `<ellipse cy="-${h + 3}" rx="3.2" ry="4.6" fill="${c}"/><path d="M-3,-${h + 1} q3,3 6,0" fill="#8FB08A"/>`
+    else {
+      const n = lvl >= 3 ? 6 : 5
+      head = `<g transform="translate(0,-${h + r})">${Array.from({ length: n }, (_, k) => `<ellipse cy="-${(r * 0.85).toFixed(1)}" rx="${(r * 0.62).toFixed(1)}" ry="${(r * 0.95).toFixed(1)}" fill="${c}" transform="rotate(${(360 / n) * k})"/>`).join('')}<circle r="${(r * 0.45).toFixed(1)}" fill="#F2D35B"/></g>`
+    }
+    const glow = f.count > 1 && !pending ? `<circle class="sf-glow" cy="-${h + r}" r="${r + 7}" fill="url(#glow)"/>` : ''
+    const fly = lvl === 4 ? `<g class="sf-float" transform="translate(10,-${h + 16})"><g class="sf-flap"><ellipse cx="-2.6" rx="2.6" ry="3.4" fill="#E9B84E"/><ellipse cx="2.6" rx="2.6" ry="3.4" fill="#E9B84E"/></g></g>` : ''
+    const cls = ['sf-flower', growIds.includes(f.id) ? 'sf-grow' : '', flashIds.includes(f.id) ? 'sf-flash' : ''].join(' ')
+    return `<g class="${cls}" data-book="${f.id}" transform="translate(${x},${337 + (i % 2) * 2})"><rect x="-10" y="-${h + r * 2 + 8}" width="20" height="${h + r * 2 + 10}" fill="transparent"/>${glow}<g class="sf-in">${stem}${head}</g>${fly}</g>`
+  }).join('')
   const seedEl = stage === 0 ? `<ellipse cx="${BASE_X}" cy="326" rx="7" ry="4.5" fill="#98775F" opacity=".8" filter="url(#wc)"/>` : ''
 
   return `
@@ -186,15 +210,15 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
     </defs>
     <ellipse cx="180" cy="338" rx="150" ry="13" fill="#A5B6A0" opacity=".4" filter="url(#wcT)"/>
     <ellipse cx="170" cy="337" rx="96" ry="7" fill="#83A48A" opacity=".25" filter="url(#wcT)"/>
-    ${wash}<g filter="url(#wcT)">${br}${fronds}</g>${seedEl}${grass}${flowers}
-    <g>${lv}</g><g>${fruits}</g>${critter}${guests}`
+    ${wash}<g filter="url(#wcT)">${br}${fronds}</g>${seedEl}${grass}${groundFlowers}
+    <g>${lv}</g><g>${fruits}</g>${blooms}${critter}${guests}`
 }
 
 const EMPTY = []
-export default function ReadingTree({ childId, ym, speciesId, leaves, zoom, onPick, onVisitor, visitors = EMPTY, pendingIds = EMPTY, growIds = EMPTY, flashIds = EMPTY, popIds = EMPTY, className = '' }) {
+export default function ReadingTree({ childId, ym, speciesId, leaves, zoom, onPick, onVisitor, visitors = EMPTY, flowers = EMPTY, pendingIds = EMPTY, growIds = EMPTY, flashIds = EMPTY, popIds = EMPTY, className = '' }) {
   const svg = useMemo(
-    () => renderTree({ seed: childId + '|' + ym + '|' + speciesId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors }),
-    [childId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors]
+    () => renderTree({ seed: childId + '|' + ym + '|' + speciesId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors, flowers }),
+    [childId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors, flowers]
   )
   const stage = stageOf(leaves.length)
   const vb = stage <= 1 ? '80 200 200 152' : stage === 2 ? '50 160 260 192' : '0 0 360 352'

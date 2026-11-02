@@ -8,11 +8,12 @@ import { Sheet } from './ui'
 import { isEnglishBook } from '../lib/visitors'
 import Cover from './Cover'
 import CoverCamera from './CoverCamera'
+import MagazinePanel from './MagazinePanel'
 
 // 掃描套件較大，打開掃描時才下載
 const Scanner = lazy(() => import('./Scanner'))
 
-const TABS = [['scan', '掃描 ISBN'], ['search', '搜尋書名'], ['manual', '手動新增']]
+const TABS = [['scan', '掃描'], ['search', '搜尋書名'], ['manual', '手動新增'], ['magazine', '🌼 雜誌']]
 
 export default function AddBookSheet({ open, onClose, session, data, childId: initialChild, presetDate, onSaved }) {
   const { family, children } = data
@@ -33,13 +34,14 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const [coverInfo, setCoverInfo] = useState(null)
   const [cam, setCam] = useState(false)
   const [notFound, setNotFound] = useState(null)
+  const [magIssn, setMagIssn] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setTab('scan'); setState({ busy: false, msg: '', error: '' }); setIsbnInput(''); setQuery(''); setResults(null)
     setCand(null); setOwned(null); setCat(undefined); setDate(presetDate || ymd()); setChildId(initialChild); setNote('')
-    setManual({ title: '', author: '', isbn: '' }); setCoverFile(null); setCoverInfo(null); setNotFound(null)
+    setManual({ title: '', author: '', isbn: '' }); setCoverFile(null); setCoverInfo(null); setNotFound(null); setMagIssn(null)
   }, [open, presetDate, initialChild])
 
   // 這本書是否已在這個孩子的書房
@@ -66,6 +68,17 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const offline = () => !navigator.onLine && (fail('目前離線，無法查詢書籍資料。連上網路後再試，或先手動新增。'), true)
 
   const runLookup = useCallback(async (raw) => {
+    // 雜誌條碼（ISSN，977 開頭）：找自己家的雜誌，找不到就建立新雜誌
+    const digits = String(raw || '').replace(/\D/g, '')
+    if (/^977\d{10}/.test(digits)) {
+      const issn = digits.slice(3, 10)
+      const { data: mag } = await supabase.from('books').select('id').eq('owner_family_id', family.id).eq('kind', 'magazine').eq('issn', issn).maybeSingle()
+      setMagIssn(mag ? null : issn)
+      setState({ busy: false, msg: '', error: '' })
+      setTab('magazine')
+      if (mag) toast('認出這本雜誌了！按「今天讀了」就記好 🌼')
+      return
+    }
     const n = normalizeIsbn(raw)
     if (!n) return fail('這不是有效的 ISBN，請確認 10 碼或 13 碼數字有沒有打錯。')
     if (offline()) return
@@ -160,7 +173,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     <Sheet open={open} onClose={onClose} title={cand ? '確認是這本書嗎？' : '新增繪本'}>
       {!cand ? (
         <>
-          <div className="mb-4 grid grid-cols-3 gap-1.5">
+          <div className="mb-4 grid grid-cols-4 gap-1.5">
             {TABS.map(([k, t]) => (
               <button key={k} onClick={() => { setTab(k); setState({ busy: false, msg: '', error: '' }) }}
                 className={`rounded-xl border px-1 py-2.5 text-[13.5px] ${tab === k ? 'border-sage bg-sage-mist font-bold text-sage-deep' : 'border-line'}`}>{t}</button>
@@ -208,6 +221,11 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
                   <div className="mt-3"><button className="btn" onClick={() => { setTab('manual'); setManual((m) => ({ ...m, title: query })) }}>手動新增</button></div></div>
               ))}
             </>
+          )}
+
+          {tab === 'magazine' && (
+            <MagazinePanel session={session} family={family} children={children} childId={childId} setChildId={setChildId}
+              date={date} setDate={setDate} presetIssn={magIssn} onSaved={onSaved} onClose={onClose} />
           )}
 
           {tab === 'manual' && (
