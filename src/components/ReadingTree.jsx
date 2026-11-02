@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { SPECIES, SEASONS, groundFlower, animal } from '../lib/trees'
 import { catOf } from '../lib/books'
+import { visitorSvg } from '../lib/visitors'
 
 /* ---------- 穩定的亂數：同樣的資料永遠畫出同樣的樹 ---------- */
 export function hashStr(s) {
@@ -102,7 +103,7 @@ function buildBanana(seed, stage) {
 }
 
 /* ---------- 組合成 SVG ---------- */
-function renderTree({ seed, ym, speciesId, leaves, glowIds = [] }) {
+function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = [], flashIds = [], popIds = [], visitors = [] }) {
   const sp = SPECIES[speciesId] || SPECIES.guava
   const n = leaves.length
   const stage = stageOf(n)
@@ -144,22 +145,35 @@ function renderTree({ seed, ym, speciesId, leaves, glowIds = [] }) {
 
   const lv = placed.map(({ l, p, rot }) => {
     const c = catOf(l.cat)
-    const glow = l.count > 1 || glowIds.includes(l.id)
-    return `<g class="sf-leaf" data-book="${l.id}" transform="translate(${f1(p.x)},${f1(p.y)}) rotate(${f1(rot)}) scale(${scale})">
+    const tf = `translate(${f1(p.x)},${f1(p.y)}) rotate(${f1(rot)}) scale(${scale})`
+    if (pendingIds.includes(l.id)) {
+      // 花苞：等孩子澆水才長成葉子
+      return `<g class="sf-leaf sf-bud" data-book="${l.id}" transform="${tf}"><circle r="14" cx="9" fill="transparent"/><path d="${sp.leaf}" fill="${c.color}" fill-opacity=".12" stroke="${c.color}" stroke-width="1.5" stroke-dasharray="3 2.5" transform="scale(.75)"/></g>`
+    }
+    const glow = l.count > 1
+    const cls = ['sf-leaf', growIds.includes(l.id) ? 'sf-grow' : '', flashIds.includes(l.id) ? 'sf-flash' : ''].join(' ')
+    return `<g class="${cls}" data-book="${l.id}" transform="${tf}">
       <circle r="14" cx="9" fill="transparent"/>
       ${glow ? '<circle class="sf-glow" cx="9" r="13" fill="url(#glow)"/>' : ''}
-      <path d="${sp.leaf}" fill="${c.color}" opacity=".92" filter="url(#wc)"/>
-      <path d="M1.5,0 Q9,-.8 ${sp.structure === 'banana' ? 24 : 16},0" stroke="#5C5146" stroke-opacity=".28" stroke-width=".8" fill="none"/></g>`
+      <g class="sf-in"><path d="${sp.leaf}" fill="${c.color}" opacity=".92" filter="url(#wc)"/>
+      <path d="M1.5,0 Q9,-.8 ${sp.structure === 'banana' ? 24 : 16},0" stroke="#5C5146" stroke-opacity=".28" stroke-width=".8" fill="none"/></g></g>`
   }).join('')
 
-  const fruits = placed.filter(({ l }) => l.fruit).map(({ l, p }) => {
+  const fruits = placed.filter(({ l }) => l.fruit && !pendingIds.includes(l.id)).map(({ l, p }) => {
     const fx = sp.structure === 'banana' ? T.top.x + ((hashStr(l.id) % 30) - 15) : p.x + 3
     const fy = sp.structure === 'banana' ? T.top.y + 14 + (hashStr(l.id + 'f') % 14) : p.y + 12
-    return `<g class="sf-fruit" data-book="${l.id}"><circle cx="${f1(fx)}" cy="${f1(fy)}" r="11" fill="transparent"/>${sp.fruit(Number(f1(fx)), Number(f1(fy)))}</g>`
+    return `<g class="sf-fruit${popIds.includes(l.id) ? ' sf-pop' : ''}" data-book="${l.id}"><circle cx="${f1(fx)}" cy="${f1(fy)}" r="11" fill="transparent"/>${sp.fruit(Number(f1(fx)), Number(f1(fy)))}</g>`
   }).join('')
 
   const canopy = stage <= 1 ? [BASE_X + 40, BASE_Y - 70] : [T.top.x + 30, T.top.y + 10]
   const critter = animal(season.animal, { trunkX: BASE_X, groundY: 336, canopy })
+  // 英文書帶來的森林訪客，站在草地上
+  const spots = stage <= 1 ? [104, 256, 126, 234, 92, 268] : stage === 2 ? [70, 290, 100, 262, 84, 276] : [58, 304, 96, 268, 34, 326]
+  const guests = visitors.slice(0, 6).map((v, i) => {
+    const x = spots[i] + ((hashStr(v.id) % 9) - 4)
+    const flip = x > BASE_X ? -1 : 1
+    return `<g class="sf-visitor" data-visitor="${v.id}" transform="translate(${x},${334 + (i % 2) * 3}) scale(${flip * 0.95},0.95)" style="animation-delay:${(i * 0.7).toFixed(1)}s"><rect x="-14" y="-30" width="28" height="32" fill="transparent"/>${visitorSvg(v.animal)}</g>`
+  }).join('')
   const seedEl = stage === 0 ? `<ellipse cx="${BASE_X}" cy="326" rx="7" ry="4.5" fill="#98775F" opacity=".8" filter="url(#wc)"/>` : ''
 
   return `
@@ -173,17 +187,26 @@ function renderTree({ seed, ym, speciesId, leaves, glowIds = [] }) {
     <ellipse cx="180" cy="338" rx="150" ry="13" fill="#A5B6A0" opacity=".4" filter="url(#wcT)"/>
     <ellipse cx="170" cy="337" rx="96" ry="7" fill="#83A48A" opacity=".25" filter="url(#wcT)"/>
     ${wash}<g filter="url(#wcT)">${br}${fronds}</g>${seedEl}${grass}${flowers}
-    <g>${lv}</g><g>${fruits}</g>${critter}`
+    <g>${lv}</g><g>${fruits}</g>${critter}${guests}`
 }
 
-export default function ReadingTree({ childId, ym, speciesId, leaves, zoom, onPick }) {
-  const svg = useMemo(() => renderTree({ seed: childId + '|' + ym + '|' + speciesId, ym, speciesId, leaves }), [childId, ym, speciesId, leaves])
+const EMPTY = []
+export default function ReadingTree({ childId, ym, speciesId, leaves, zoom, onPick, onVisitor, visitors = EMPTY, pendingIds = EMPTY, growIds = EMPTY, flashIds = EMPTY, popIds = EMPTY, className = '' }) {
+  const svg = useMemo(
+    () => renderTree({ seed: childId + '|' + ym + '|' + speciesId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors }),
+    [childId, ym, speciesId, leaves, pendingIds, growIds, flashIds, popIds, visitors]
+  )
   const stage = stageOf(leaves.length)
   const vb = stage <= 1 ? '80 200 200 152' : stage === 2 ? '50 160 260 192' : '0 0 360 352'
   return (
     <div
-      className={`sf-tree relative -mx-2 rounded-[18px] ${zoom ? 'overflow-x-auto' : 'overflow-hidden'}`}
-      onClick={(e) => { const g = e.target.closest('[data-book]'); if (g) onPick(g.getAttribute('data-book')) }}
+      className={`sf-tree relative rounded-[18px] ${zoom ? 'overflow-x-auto' : 'overflow-hidden'} ${className || '-mx-2'}`}
+      onClick={(e) => {
+        const v = e.target.closest('[data-visitor]')
+        if (v) return onVisitor?.(v.getAttribute('data-visitor'))
+        const g = e.target.closest('[data-book]')
+        if (g) onPick(g.getAttribute('data-book'))
+      }}
     >
       <svg viewBox={vb} role="img" aria-label={`${leaves.length} 片故事葉`} className={`block h-auto ${zoom ? 'w-[175%] max-w-none' : 'w-full max-w-full'}`}
         dangerouslySetInnerHTML={{ __html: svg }} />

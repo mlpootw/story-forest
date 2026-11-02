@@ -5,6 +5,7 @@ import { toast } from '../lib/toast'
 import { CATEGORIES, catOf, suggestCategory, normalizeIsbn, lookupIsbn, searchTitle, ymd, compressImage } from '../lib/books'
 import { ensureBook, ensureChildBook, addSession, uploadCover } from '../lib/records'
 import { Sheet } from './ui'
+import { isEnglishBook } from '../lib/visitors'
 import Cover from './Cover'
 
 // 掃描套件較大，打開掃描時才下載
@@ -22,6 +23,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const [cand, setCand] = useState(null) // { book, from }
   const [owned, setOwned] = useState(null) // { bookId, childBookId, category_id } 已在書房
   const [cat, setCat] = useState(undefined)
+  const [en, setEn] = useState(undefined)
   const [date, setDate] = useState(presetDate || ymd())
   const [childId, setChildId] = useState(initialChild)
   const [note, setNote] = useState('')
@@ -42,6 +44,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     let alive = true
     async function check() {
       setOwned(null)
+      setEn(undefined)
       if (!cand) return
       let bookId = cand.book.id
       if (!bookId && cand.book.isbn13) {
@@ -49,8 +52,8 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
         bookId = rows?.find((r) => !r.owner_family_id)?.id || rows?.find((r) => r.owner_family_id === family.id)?.id
       }
       if (!bookId) return
-      const { data: cb } = await supabase.from('child_books').select('id, category_id').eq('child_id', childId).eq('book_id', bookId).maybeSingle()
-      if (alive && cb) { setOwned({ bookId, childBookId: cb.id, category_id: cb.category_id }); setCat(cb.category_id) }
+      const { data: cb } = await supabase.from('child_books').select('id, category_id, is_english').eq('child_id', childId).eq('book_id', bookId).maybeSingle()
+      if (alive && cb) { setOwned({ bookId, childBookId: cb.id, category_id: cb.category_id, is_english: cb.is_english }); setCat(cb.category_id) }
     }
     check()
     return () => { alive = false }
@@ -133,10 +136,10 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
       }
       const finalCat = cat === undefined ? (owned ? owned.category_id : suggestion?.id ?? null) : cat
       const bookId = owned?.bookId || (await ensureBook({ book, familyId: family.id, userId: session.user.id, suggested: suggestion?.id }))
-      const cb = await ensureChildBook({ childId, bookId, familyId: family.id, categoryId: finalCat })
+      const cb = await ensureChildBook({ childId, bookId, familyId: family.id, categoryId: finalCat, isEnglish: shownEn })
       const { newLeaf } = await addSession({ childBookId: cb.id, childId, bookId, familyId: family.id, readOn: date, note })
       const name = children.find((c) => c.id === childId)?.nickname
-      toast(newLeaf ? `記好了！${name}這個月的樹多一片新葉子 🌱` : '記好了！這個月又讀了一次，葉子會亮起微光 ✨')
+      toast(newLeaf ? `記好了！樹上多了一個花苞，等${name}來澆水 💧` : `記好了！等${name}來澆水，葉子會亮起微光 ✨`)
       onSaved?.({ childId, date })
       onClose()
     } catch (e) {
@@ -148,6 +151,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
 
   const suggestion = cand ? suggestCategory(cand.book) : null
   const shownCat = cat === undefined ? (owned ? owned.category_id : suggestion?.id ?? null) : cat
+  const shownEn = en === undefined ? isEnglishBook(owned ? { is_english: owned.is_english } : null, cand?.book) : en
 
   return (
     <Sheet open={open} onClose={onClose} title={cand ? '確認是這本書嗎？' : '新增繪本'}>
@@ -259,6 +263,14 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
             </div>
           </div>
 
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-paper-2 px-4 py-3">
+            <p className="text-sm">這是英文書<span className="block text-xs text-ink-soft">英文書會帶一位森林訪客來教英文單字 🐰</span></p>
+            <button role="switch" aria-checked={shownEn} aria-label="這是英文書" onClick={() => setEn(!shownEn)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition ${shownEn ? 'bg-sage' : 'bg-paper-3'}`}>
+              <span className={`absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-all ${shownEn ? 'left-[23px]' : 'left-[3px]'}`} />
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="field">共讀日期<input id="read-date" type="date" className="input" value={date} max={ymd()} onChange={(e) => setDate(e.target.value)} /></label>
             <label className="field">和誰一起讀
