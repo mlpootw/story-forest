@@ -9,6 +9,9 @@ import { SPECIES, SPECIES_LIST, SEASONS } from '../lib/trees'
 import ReadingTree, { hashStr, stageOf, STAGES } from '../components/ReadingTree'
 import Cover from '../components/Cover'
 import { Sheet } from '../components/ui'
+import KidMode from '../components/KidMode'
+import VisitorCard from '../components/VisitorCard'
+import { isEnglishBook, buildVisitors } from '../lib/visitors'
 
 export default function Garden({ child, family, refresh, onChanged, onAdd }) {
   const thisMonth = ymOf(ymd())
@@ -19,12 +22,14 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
   const [picker, setPicker] = useState(false)
   const [openId, setOpenId] = useState(null)
   const [zoom, setZoom] = useState(false)
+  const [kid, setKid] = useState(false)
+  const [guest, setGuest] = useState(null)
 
   const load = useCallback(async () => {
     setError('')
     const [s, t] = await Promise.all([
       supabase.from('reading_sessions')
-        .select('id, read_on, mood, note, child_book_id, child_books(category_id, parent_note), books(id, title, cover_url, authors)')
+        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english), books(id, title, cover_url, authors, language)')
         .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01').order('read_on'),
       supabase.from('tree_choices').select('species').eq('child_id', child.id).eq('month', ym + '-01').maybeSingle()
     ])
@@ -39,7 +44,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     if (!rows) return []
     const m = new Map()
     for (const r of rows) {
-      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, sessions: [] })
+      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, en: isEnglishBook(r.child_books, r.books), sessions: [] })
       m.get(r.child_book_id).sessions.push(r)
     }
     return [...m.values()].map((l) => {
@@ -60,12 +65,14 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
   const counts = {}
   leaves.forEach((l) => { const k = l.cat || 'none'; counts[k] = (counts[k] || 0) + 1 })
   const open = leaves.find((l) => l.id === openId)
+  const visitors = useMemo(() => buildVisitors(leaves, child.id, ym, speciesId, hashStr), [leaves, child.id, ym, speciesId])
+  const waiting = rows ? rows.filter((r) => !r.growth_shown_at).length : 0
 
   async function pick(id) {
     const { error: err } = await supabase.from('tree_choices').upsert({ child_id: child.id, family_id: family.id, month: ym + '-01', species: id }, { onConflict: 'child_id,month' })
     if (err) return toast(/tree_choices|relation|schema cache/i.test(err.message) ? '請先到 Supabase 執行第四階段的更新 SQL' : zhError(err))
     setChoice(id); setPicker(false)
-    toast(`${child.nickname}這個月種下了${SPECIES[id].name} 🌱`)
+    if (!kid) toast(`${child.nickname}這個月種下了${SPECIES[id].name} 🌱`)
   }
 
   return (
@@ -85,7 +92,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       {rows && (
         <>
           <p className="mt-1 text-center text-[13px] text-ink-soft">
-            {sp.name}{leaves.length ? ` · ${leaves.length} 片故事葉` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
+            {needsPick ? '還沒選樹' : sp.name}{leaves.length ? ` · ${leaves.length} 片故事葉` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
             {canChange && choice && <button className="ml-2 text-[12px] underline" onClick={() => setPicker(true)}>換一棵</button>}
           </p>
 
@@ -100,12 +107,22 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
               {leaves.length > 18 && (
                 <button className="absolute right-2 top-2 z-10 rounded-full border border-line bg-paper/90 px-3 py-1 text-[12.5px]" onClick={() => setZoom(!zoom)}>{zoom ? '縮小' : '放大看葉子'}</button>
               )}
-              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={leaves} zoom={zoom} onPick={setOpenId} />
+              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={leaves} zoom={zoom} onPick={setOpenId}
+                visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
             </div>
           )}
 
+          {isCurrent && (
+            <div className="notice mt-3 flex items-center gap-3">
+              <p className="flex-1">{waiting > 0 ? <>💧 有 <b>{waiting}</b> 筆新紀錄，等{child.nickname}來澆水。</> : `讓${child.nickname}自己澆水、選心情、找找故事葉。`}</p>
+              <button className="btn shrink-0 px-4 py-2" onClick={() => setKid(true)}>孩子模式</button>
+            </div>
+          )}
           <p className="mt-1 text-center text-[13px] text-bark">{Number(ym.slice(5, 7))} 月的森林：{season.text}</p>
 
+          {visitors.length > 0 && (
+            <div className="mt-3 rounded-2xl bg-[#F3ECDA] px-4 py-3 text-center text-[13.5px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
+          )}
           {fruits > 0 && (
             <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">孩子選了「😍 好喜歡」或這個月讀了 2 次以上的書，就會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
           )}
@@ -161,6 +178,11 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
         <p className="hint mt-3 text-center">長出第一片葉子之前都可以換。下個月可以再選新的樹。</p>
       </Sheet>
 
+      {kid && rows && (
+        <KidMode child={child} ym={ym} speciesId={speciesId} choice={choice} rows={rows} setRows={setRows}
+          onPickTree={pick} onExit={() => { setKid(false); onChanged() }} />
+      )}
+      <VisitorCard visitor={guest} onClose={() => setGuest(null)} />
       <LeafDetail leaf={open} sp={sp} ym={ym} child={child} family={family} onClose={() => setOpenId(null)} onChanged={() => { load(); onChanged() }} />
     </div>
   )
@@ -182,7 +204,7 @@ function LeafDetail({ leaf, sp, ym, child, family, onClose, onChanged }) {
     setBusy(true)
     try {
       const { newLeaf } = await addSession({ childBookId: leaf.id, childId: child.id, bookId: leaf.book.id, familyId: family.id, readOn: ymd() })
-      toast(newLeaf ? '這個月第一次讀，樹上多一片葉子 🌱' : '又讀了一次！葉子亮起微光 ✨')
+      toast(newLeaf ? '記好了！樹上多了一個花苞，等孩子來澆水 💧' : '又讀了一次！葉子亮起微光 ✨')
       onChanged(); onClose()
     } catch (e) { toast(zhError(e)) } finally { setBusy(false) }
   }

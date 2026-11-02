@@ -4,6 +4,7 @@ import { zhError } from '../lib/errors'
 import { ageText } from '../lib/ages'
 import { toast, copyText } from '../lib/toast'
 import { Avatar, Sheet } from '../components/ui'
+import { getCalm, setCalm } from '../lib/prefs'
 import ChildForm from '../components/ChildForm'
 
 const fmtDate = (s) => new Date(s).toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
@@ -22,6 +23,7 @@ export default function FamilySettings({ session, data, reload, onBack }) {
   const [exportText, setExportText] = useState('')
   const [delWord, setDelWord] = useState('')
   const [confirmMember, setConfirmMember] = useState(null)
+  const [calm, setCalmState] = useState(getCalm())
 
   const loadMembers = useCallback(async () => {
     setLoadErr('')
@@ -174,6 +176,18 @@ export default function FamilySettings({ session, data, reload, onBack }) {
         <div className="flex items-center justify-between text-sm">
           <span className="text-ink-soft">登入 Email：{session.user.email}</span>
           <button className="btn-ghost px-4 py-1.5 text-sm" onClick={() => supabase.auth.signOut()}>登出</button>
+        </div>
+      </section>
+
+      {/* 顯示 */}
+      <section className="section">
+        <h2 className="h-hand mb-3 text-lg">顯示</h2>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm">減少動畫<span className="block text-xs text-ink-soft">澆水、長葉子、小動物的動畫改為直接顯示（只影響這台裝置）</span></p>
+          <button role="switch" aria-checked={calm} aria-label="減少動畫" onClick={() => { setCalm(!calm); setCalmState(!calm) }}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${calm ? 'bg-sage' : 'bg-paper-3'}`}>
+            <span className={`absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-all ${calm ? 'left-[23px]' : 'left-[3px]'}`} />
+          </button>
         </div>
       </section>
 
