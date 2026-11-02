@@ -2,11 +2,12 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
 import { toast } from '../lib/toast'
-import { CATEGORIES, catOf, suggestCategory, normalizeIsbn, lookupIsbn, searchTitle, ymd, compressImage } from '../lib/books'
+import { CATEGORIES, catOf, suggestCategory, normalizeIsbn, lookupIsbn, searchTitle, ymd } from '../lib/books'
 import { ensureBook, ensureChildBook, addSession, uploadCover } from '../lib/records'
 import { Sheet } from './ui'
 import { isEnglishBook } from '../lib/visitors'
 import Cover from './Cover'
+import CoverCamera from './CoverCamera'
 
 // 掃描套件較大，打開掃描時才下載
 const Scanner = lazy(() => import('./Scanner'))
@@ -30,13 +31,15 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const [manual, setManual] = useState({ title: '', author: '', isbn: '' })
   const [coverFile, setCoverFile] = useState(null)
   const [coverInfo, setCoverInfo] = useState(null)
+  const [cam, setCam] = useState(false)
+  const [notFound, setNotFound] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setTab('scan'); setState({ busy: false, msg: '', error: '' }); setIsbnInput(''); setQuery(''); setResults(null)
     setCand(null); setOwned(null); setCat(undefined); setDate(presetDate || ymd()); setChildId(initialChild); setNote('')
-    setManual({ title: '', author: '', isbn: '' }); setCoverFile(null); setCoverInfo(null)
+    setManual({ title: '', author: '', isbn: '' }); setCoverFile(null); setCoverInfo(null); setNotFound(null)
   }, [open, presetDate, initialChild])
 
   // 這本書是否已在這個孩子的書房
@@ -70,8 +73,12 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     try {
       const r = await lookupIsbn(n.isbn13, (msg) => setState((s) => ({ ...s, msg })))
       if (!r) {
+        // 查不到：直接帶到快速手動新增，ISBN 已經填好
         setManual((m) => ({ ...m, isbn: n.isbn13 }))
-        return fail(`Google Books 和 Open Library 都找不到 ISBN ${n.isbn13}。台灣小型出版社或較新的繪本常常沒有收錄，可以改用「手動新增」。`)
+        setNotFound(n.isbn13)
+        setState({ busy: false, msg: '', error: '' })
+        setTab('manual')
+        return
       }
       if (!r.book.isbn10 && n.isbn10) r.book.isbn10 = n.isbn10
       setState({ busy: false, msg: '', error: '' })
@@ -94,16 +101,10 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     }
   }
 
-  async function pickCover(e) {
-    const f = e.target.files?.[0]
-    if (!f) return
-    try {
-      const r = await compressImage(f)
-      setCoverFile(f)
-      setCoverInfo({ preview: URL.createObjectURL(r.blob), text: `壓縮後 ${(r.blob.size / 1024).toFixed(0)} KB（原檔 ${(f.size / 1024).toFixed(0)} KB）` })
-    } catch {
-      toast('這張照片無法處理，請換一張試試')
-    }
+  function onShot(file, preview) {
+    setCam(false)
+    setCoverFile(file)
+    setCoverInfo({ preview })
   }
 
   function manualNext() {
@@ -134,9 +135,11 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
         book.cover_source = 'none'
         if (coverFile) { book.cover_url = await uploadCover(family.id, coverFile); book.cover_source = 'upload' }
       }
+      const ownCover = !cand.manual && coverFile ? await uploadCover(family.id, coverFile) : null
       const finalCat = cat === undefined ? (owned ? owned.category_id : suggestion?.id ?? null) : cat
       const bookId = owned?.bookId || (await ensureBook({ book, familyId: family.id, userId: session.user.id, suggested: suggestion?.id }))
       const cb = await ensureChildBook({ childId, bookId, familyId: family.id, categoryId: finalCat, isEnglish: shownEn })
+      if (ownCover) await supabase.from('child_books').update({ cover_url: ownCover }).eq('id', cb.id)
       const { newLeaf } = await addSession({ childBookId: cb.id, childId, bookId, familyId: family.id, readOn: date, note })
       const name = children.find((c) => c.id === childId)?.nickname
       toast(newLeaf ? `記好了！樹上多了一個花苞，等${name}來澆水 💧` : `記好了！等${name}來澆水，葉子會亮起微光 ✨`)
@@ -209,15 +212,19 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
 
           {tab === 'manual' && (
             <div className="flex flex-col gap-3">
-              <label className="field">書名（必填）<input id="m-title" className="input" value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} /></label>
+              {notFound && (
+                <div className="notice">資料庫裡找不到這本書（ISBN {notFound}）。<br /><span className="hint">台灣出版的翻譯繪本常常沒有被收錄。填好書名、拍一張封面就完成了！</span></div>
+              )}
+              <label className="field">書名（必填）<input id="m-title" className="input" autoFocus={!!notFound} value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} /></label>
               <label className="field">作者<input id="m-author" className="input" value={manual.author} onChange={(e) => setManual({ ...manual, author: e.target.value })} /></label>
               <label className="field">ISBN（沒有可以留空）<input id="m-isbn" className="input" inputMode="numeric" value={manual.isbn} onChange={(e) => setManual({ ...manual, isbn: e.target.value })} /></label>
-              <label className="field">封面照片（選填）
-                <input id="m-cover" type="file" accept="image/*" className="text-[13px]" onChange={pickCover} />
-              </label>
-              {coverInfo ? (
-                <div className="flex items-center gap-3"><img src={coverInfo.preview} alt="封面預覽" className="w-16 rounded" /><span className="hint">{coverInfo.text}</span></div>
-              ) : <p className="hint -mt-1">照片會先縮小並壓縮（最寬 600px、300 KB 以內）再上傳。</p>}
+              <div className="field">封面照片（選填）
+                <div className="flex items-center gap-3">
+                  {coverInfo && <img src={coverInfo.preview} alt="封面預覽" className="w-16 rounded shadow" />}
+                  <button type="button" className="btn-ghost px-4 py-2 text-sm" onClick={() => setCam(true)}>📷 {coverInfo ? '重拍封面' : '拍封面'}</button>
+                </div>
+                <span className="hint">畫面上有框線幫你對準，拍完自動裁掉多餘的地方。</span>
+              </div>
               <button className="btn btn-block" onClick={manualNext}>下一步：確認分類</button>
             </div>
           )}
@@ -232,7 +239,10 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
       ) : (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start gap-4">
-            <Cover book={cand.book} categoryId={shownCat} size="md" />
+            <div>
+              <Cover book={coverInfo ? { ...cand.book, cover_url: coverInfo.preview } : cand.book} categoryId={shownCat} size="md" />
+              {!cand.manual && <button className="mt-1.5 w-full text-center text-[12px] text-bark underline" onClick={() => setCam(true)}>封面不對？📷 拍一張</button>}
+            </div>
             <div className="min-w-0">
               <h4 className="text-[17px] font-medium leading-snug">{cand.book.title}</h4>
               <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
@@ -282,11 +292,12 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
           <label className="field">家長備註（選填）<input id="read-note" className="input" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：一直指著挖土機笑" /></label>
 
           <div className="flex gap-2">
-            <button className="btn-ghost" onClick={() => { setCand(null); setOwned(null) }} disabled={saving}>不是這本</button>
+            <button className="btn-ghost" onClick={() => { if (!cand.manual) { setCoverFile(null); setCoverInfo(null) } setCand(null); setOwned(null) }} disabled={saving}>不是這本</button>
             <button className="btn flex-1" onClick={save} disabled={saving}>{saving ? '儲存中…' : '加入共讀紀錄'}</button>
           </div>
         </div>
       )}
+      {cam && <CoverCamera onDone={onShot} onClose={() => setCam(false)} />}
     </Sheet>
   )
 }
