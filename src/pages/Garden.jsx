@@ -30,7 +30,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     setError('')
     const [s, t] = await Promise.all([
       supabase.from('reading_sessions')
-        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english, cover_url, is_favorite), books(id, title, cover_url, authors, language)')
+        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english, cover_url, is_favorite), books(id, title, cover_url, authors, language, kind)')
         .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01').order('read_on'),
       supabase.from('tree_choices').select('species').eq('child_id', child.id).eq('month', ym + '-01').maybeSingle()
     ])
@@ -45,29 +45,32 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     if (!rows) return []
     const m = new Map()
     for (const r of rows) {
-      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, en: isEnglishBook(r.child_books, r.books), favorite: !!r.child_books?.is_favorite, sessions: [] })
+      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, en: isEnglishBook(r.child_books, r.books), favorite: !!r.child_books?.is_favorite, mag: r.books?.kind === 'magazine', sessions: [] })
       m.get(r.child_book_id).sessions.push(r)
     }
     return [...m.values()].map((l) => {
       const moods = l.sessions.map((s) => s.mood).filter(Boolean)
       const base = { ...l, count: l.sessions.length, first: l.sessions[0].read_on, topMood: topMood(moods) }
-      const why = fruitReason(base)
+      const why = base.mag ? null : fruitReason(base)
       return { ...base, fruit: !!why, fruitWhy: why }
     })
   }, [rows])
 
+  // 雜誌是樹下的花，不算樹上的葉子
+  const bookLeaves = useMemo(() => leaves.filter((l) => !l.mag), [leaves])
+  const flowers = useMemo(() => leaves.filter((l) => l.mag), [leaves])
   const isCurrent = ym === thisMonth
   const speciesId = choice || SPECIES_LIST[hashStr(child.id + ym) % SPECIES_LIST.length].id
   const sp = SPECIES[speciesId]
-  const canChange = isCurrent && (!choice || leaves.length === 0)
+  const canChange = isCurrent && (!choice || leaves.every((l) => l.sessions.every((x) => !x.growth_shown_at)))
   const needsPick = isCurrent && choice === null
-  const stage = stageOf(leaves.length)
+  const stage = stageOf(bookLeaves.length)
   const season = SEASONS[Number(ym.slice(5, 7))]
   const fruits = leaves.filter((l) => l.fruit).length
   const counts = {}
   leaves.forEach((l) => { const k = l.cat || 'none'; counts[k] = (counts[k] || 0) + 1 })
   const open = leaves.find((l) => l.id === openId)
-  const visitors = useMemo(() => buildVisitors(leaves, child.id, ym, speciesId, hashStr), [leaves, child.id, ym, speciesId])
+  const visitors = useMemo(() => buildVisitors(bookLeaves, child.id, ym, speciesId, hashStr), [bookLeaves, child.id, ym, speciesId])
   const waiting = rows ? rows.filter((r) => !r.growth_shown_at).length : 0
 
   async function pick(id) {
@@ -94,7 +97,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       {rows && (
         <>
           <p className="mt-1 text-center text-[13px] text-ink-soft">
-            {needsPick ? '還沒選樹' : sp.name}{leaves.length ? ` · ${leaves.length} 片故事葉` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
+            {needsPick ? '還沒選樹' : sp.name}{bookLeaves.length ? ` · ${bookLeaves.length} 片故事葉` : ''}{flowers.length ? ` · ${flowers.length} 朵雜誌花` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
             {canChange && choice && <button className="ml-2 text-[12px] underline" onClick={() => setPicker(true)}>換一棵</button>}
           </p>
 
@@ -106,10 +109,10 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
             </div>
           ) : (
             <div className="relative">
-              {leaves.length > 18 && (
+              {bookLeaves.length > 18 && (
                 <button className="absolute right-2 top-2 z-10 rounded-full border border-line bg-paper/90 px-3 py-1 text-[12.5px]" onClick={() => setZoom(!zoom)}>{zoom ? '縮小' : '放大看葉子'}</button>
               )}
-              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={leaves} zoom={zoom} onPick={setOpenId}
+              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} zoom={zoom} onPick={setOpenId}
                 visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
             </div>
           )}
@@ -143,8 +146,8 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
             <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">重讀的書、爸媽標成最喜歡的書，還有森林偶爾送來的驚喜，都會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
           )}
 
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {[['不同繪本', leaves.length], ['共讀次數', rows.length], ['共讀天數', new Set(rows.map((r) => r.read_on)).size]].map(([t, v]) => (
+          <div className={`mt-4 grid gap-2 text-center ${flowers.length ? "grid-cols-4" : "grid-cols-3"}`}>
+            {[['不同繪本', bookLeaves.length], ...(flowers.length ? [['雜誌', flowers.length]] : []), ['共讀次數', rows.length], ['共讀天數', new Set(rows.map((r) => r.read_on)).size]].map(([t, v]) => (
               <div key={t} className="rounded-2xl bg-paper-2 py-2.5"><b className="h-hand block text-2xl tabular-nums">{v}</b><span className="text-xs text-ink-soft">{t}</span></div>
             ))}
           </div>
@@ -160,12 +163,12 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
                 ))}
                 {counts.none > 0 && <span className="flex items-center gap-1.5"><i className="h-[9px] w-3.5 rounded-[9px_1px_9px_1px]" style={{ background: UNKNOWN_CAT.color }} />待確認分類<em className="ml-auto not-italic text-ink-soft">{counts.none}</em></span>}
               </div>
-              <h3 className="h-hand mb-2 mt-6 text-lg">這個月的故事葉</h3>
+              <h3 className="h-hand mb-2 mt-6 text-lg">這個月讀的書{flowers.length > 0 && <span className="ml-2 text-xs font-normal text-ink-soft">🌼 是雜誌</span>}</h3>
               <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
                 {[...leaves].reverse().map((l) => (
                   <button key={l.id} className="w-[76px] shrink-0 text-left" onClick={() => setOpenId(l.id)}>
                     <Cover book={l.book} categoryId={l.cat} size="xs" count={l.count > 1 ? `×${l.count}` : ''} />
-                    <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">{l.book.title}</span>
+                    <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">{l.mag && '🌼 '}{l.book.title}</span>
                   </button>
                 ))}
               </div>

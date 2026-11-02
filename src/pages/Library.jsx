@@ -8,6 +8,7 @@ import CoverCamera from '../components/CoverCamera'
 import Cover from '../components/Cover'
 import { Sheet } from '../components/ui'
 import { isEnglishBook } from '../lib/visitors'
+import ShareSheet from '../components/ShareSheet'
 
 export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const [items, setItems] = useState(null)
@@ -16,6 +17,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const [catF, setCatF] = useState('all')
   const [sort, setSort] = useState('recent')
   const [openId, setOpenId] = useState(null)
+  const [share, setShare] = useState(null) // null | { ids }
 
   const load = useCallback(async () => {
     setError('')
@@ -45,6 +47,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
 
   const hasUnknown = items?.some((x) => !x.category_id)
   const open = items?.find((x) => x.id === openId)
+  const favs = items?.filter((x) => x.is_favorite) || []
 
   if (error) return <div className="error-box mt-4">{error} <button className="underline" onClick={load}>重試</button></div>
   if (!items) return <p className="py-16 text-center text-sm text-ink-soft">正在打開書房…</p>
@@ -66,6 +69,13 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
         {CATEGORIES.map((c) => <Chip key={c.id} on={catF === c.id} color={c.color} onClick={() => setCatF(c.id)}>{c.name}</Chip>)}
         {hasUnknown && <Chip on={catF === 'none'} color="#C9BFAF" onClick={() => setCatF('none')}>待確認分類</Chip>}
       </div>
+      <button onClick={() => (favs.length ? setShare({ ids: null }) : toast('還沒有 ♥ 最喜歡的書。點一本書，按「♡ 標為最喜歡」就能加入書單'))}
+        className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-[#F6E9EC] px-4 py-3 text-left active:scale-[.99]">
+        <span className="text-2xl">♥</span>
+        <span className="min-w-0 flex-1"><b className="block text-[15px]">分享最愛書單</b>
+          <span className="text-[12.5px] text-ink-soft">{favs.length ? `${favs.length} 本 ♥ 最喜歡的書，排成圖卡傳到 LINE` : '在書的資料頁按「♡ 標為最喜歡」，就能分享'}</span></span>
+        <span className="rounded-full bg-[#06C755] px-3 py-1 text-xs font-bold text-white">LINE</span>
+      </button>
       <div className="my-3 flex rounded-full bg-paper-2 p-1">
         {[['recent', '最近閱讀'], ['love', '最喜歡'], ['reread', '最常重讀']].map(([k, t]) => (
           <button key={k} onClick={() => setSort(k)} className={`flex-1 rounded-full py-1.5 text-[13px] ${sort === k ? 'bg-paper-card font-medium shadow-sm' : ''}`}>{t}</button>
@@ -76,13 +86,16 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
           {list.map((x) => (
             <button key={x.id} className="min-w-0 text-left" onClick={() => setOpenId(x.id)}>
               <Cover book={x.books} categoryId={x.category_id} size="sm" count={x.count > 1 ? `讀過 ${x.count} 次` : ''} />
-              <span className="mt-1.5 line-clamp-2 block text-[12.5px] leading-snug">{x.is_favorite && <span className="text-[#C88F99]">♥ </span>}{x.books.title}</span>
+              <span className="mt-1.5 line-clamp-2 block text-[12.5px] leading-snug">{x.is_favorite && <span className="text-[#C88F99]">♥ </span>}{x.books.kind === 'magazine' && '🌼 '}{x.books.title}</span>
             </button>
           ))}
         </div>
       ) : <p className="py-10 text-center text-sm text-ink-soft">沒有符合條件的書，換個關鍵字或分類試試。</p>}
 
-      <BookDetail item={open} child={child} family={family} onClose={() => setOpenId(null)} onChanged={() => { load(); onChanged() }} />
+      <BookDetail item={open} child={child} family={family} onClose={() => setOpenId(null)} onChanged={() => { load(); onChanged() }}
+        onShare={() => { setShare({ ids: [open.id], single: true }); setOpenId(null) }} />
+      <ShareSheet open={!!share} onClose={() => setShare(null)} child={child}
+        items={share?.single ? items.filter((x) => share.ids.includes(x.id)) : favs} initialIds={share?.ids || null} />
     </div>
   )
 }
@@ -95,7 +108,7 @@ function Chip({ on, color, onClick, children }) {
   )
 }
 
-function BookDetail({ item, child, family, onClose, onChanged }) {
+function BookDetail({ item, child, family, onClose, onChanged, onShare }) {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -151,7 +164,10 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
       </div>
       {b.description && <p className="mt-3 line-clamp-5 rounded-xl bg-paper-2 px-3 py-2.5 text-[13px] leading-relaxed">{b.description}</p>}
 
-      <button className="btn-gold btn-block mt-4" disabled={busy === 'again'} onClick={readToday}>{busy === 'again' ? '記錄中…' : '今天又讀了這本'}</button>
+      <div className="mt-4 flex gap-2">
+        <button className="btn-gold flex-1 py-3" disabled={busy === 'again'} onClick={readToday}>{busy === 'again' ? '記錄中…' : '今天又讀了這本'}</button>
+        <button className="btn shrink-0 bg-[#06C755] px-4 py-3" onClick={onShare}>分享這本</button>
+      </div>
 
       <p className="mb-1 mt-5 text-[13px] text-ink-soft">主要分類（決定葉子顏色）{!item.category_id && <b className="ml-1 text-bark">目前：待確認</b>}</p>
       {!item.category_id && suggestCategory(b) && (
