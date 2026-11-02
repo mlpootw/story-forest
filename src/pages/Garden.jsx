@@ -10,6 +10,7 @@ import ReadingTree, { hashStr, stageOf, STAGES } from '../components/ReadingTree
 import Cover from '../components/Cover'
 import { Sheet } from '../components/ui'
 import KidMode from '../components/KidMode'
+import { fruitReason, FRUIT_REASON_TEXT } from '../lib/fruit'
 import VisitorCard from '../components/VisitorCard'
 import { isEnglishBook, buildVisitors } from '../lib/visitors'
 
@@ -29,12 +30,12 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     setError('')
     const [s, t] = await Promise.all([
       supabase.from('reading_sessions')
-        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english), books(id, title, cover_url, authors, language)')
+        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english, cover_url, is_favorite), books(id, title, cover_url, authors, language)')
         .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01').order('read_on'),
       supabase.from('tree_choices').select('species').eq('child_id', child.id).eq('month', ym + '-01').maybeSingle()
     ])
     if (s.error) return setError(zhError(s.error))
-    setRows(s.data)
+    setRows(s.data.map((r) => (r.child_books?.cover_url ? { ...r, books: { ...r.books, cover_url: r.child_books.cover_url } } : r)))
     setChoice(t.error ? null : t.data?.species || null) // 還沒執行第四階段 SQL 時，仍可正常顯示
   }, [child.id, ym])
   useEffect(() => { setRows(null); setChoice(undefined); setZoom(false); load() }, [load, refresh])
@@ -44,13 +45,14 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     if (!rows) return []
     const m = new Map()
     for (const r of rows) {
-      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, en: isEnglishBook(r.child_books, r.books), sessions: [] })
+      if (!m.has(r.child_book_id)) m.set(r.child_book_id, { id: r.child_book_id, book: r.books, cat: r.child_books?.category_id, parentNote: r.child_books?.parent_note, en: isEnglishBook(r.child_books, r.books), favorite: !!r.child_books?.is_favorite, sessions: [] })
       m.get(r.child_book_id).sessions.push(r)
     }
     return [...m.values()].map((l) => {
       const moods = l.sessions.map((s) => s.mood).filter(Boolean)
-      const loved = moods.includes(3)
-      return { ...l, count: l.sessions.length, first: l.sessions[0].read_on, loved, fruit: loved || l.sessions.length >= 2, topMood: topMood(moods) }
+      const base = { ...l, count: l.sessions.length, first: l.sessions[0].read_on, topMood: topMood(moods) }
+      const why = fruitReason(base)
+      return { ...base, fruit: !!why, fruitWhy: why }
     })
   }, [rows])
 
@@ -113,9 +115,23 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
           )}
 
           {isCurrent && (
-            <div className="notice mt-3 flex items-center gap-3">
-              <p className="flex-1">{waiting > 0 ? <>💧 有 <b>{waiting}</b> 筆新紀錄，等{child.nickname}來澆水。</> : `讓${child.nickname}自己澆水、選心情、找找故事葉。`}</p>
-              <button className="btn shrink-0 px-4 py-2" onClick={() => setKid(true)}>孩子模式</button>
+            <div className="notice mt-3 flex items-center gap-4">
+              {/* 給孩子認的大按鈕：水壺＋自己的頭像，有水要澆時會搖一搖 */}
+              <button onClick={() => setKid(true)} aria-label={`${child.nickname}的孩子模式`}
+                className={`relative grid h-[84px] w-[84px] shrink-0 place-items-center rounded-full bg-[#DCE8DF] shadow-[0_3px_0_#B9CDBE] active:translate-y-0.5 active:shadow-none ${waiting > 0 ? 'sf-wiggle' : ''}`}>
+                <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden="true">
+                  <path d="M14 26h28l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#8EAEBB" /><path d="M14 26h28l-.6 5H14.6z" fill="#7A9BA8" />
+                  <path d="M42 32l13-11 3 3-12 13z" fill="#8EAEBB" /><circle cx="57" cy="22" r="3.5" fill="#7A9BA8" />
+                  <path d="M20 26c0-8 4-12 8-12s8 4 8 12" fill="none" stroke="#7A9BA8" strokeWidth="3.5" strokeLinecap="round" />
+                  <path d="M24 40c2 3 8 3 10 0" stroke="#F8F4EB" strokeWidth="2.2" fill="none" strokeLinecap="round" /><circle cx="23" cy="36" r="1.8" fill="#F8F4EB" /><circle cx="35" cy="36" r="1.8" fill="#F8F4EB" />
+                </svg>
+                <span className="absolute -bottom-1 -left-1 grid h-8 w-8 place-items-center rounded-full font-hand text-sm font-bold text-white shadow-[0_0_0_3px_#EEF2EA]" style={{ background: child.avatar_color }}>{child.nickname.slice(-1)}</span>
+                {waiting > 0 && <span className="absolute -right-1 -top-1 grid h-7 min-w-7 place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-[#4A3F2E] shadow-[0_0_0_3px_#EEF2EA]">💧{waiting}</span>}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="h-hand text-[17px] leading-snug">{child.nickname}的小水壺</p>
+                <p className="text-[13px] leading-relaxed text-ink-soft">{waiting > 0 ? <>有 <b className="text-ink">{waiting}</b> 筆新紀錄，等{child.nickname}來澆水</> : `點水壺進入孩子模式：澆水、選心情、找故事葉`}</p>
+              </div>
             </div>
           )}
           <p className="mt-1 text-center text-[13px] text-bark">{Number(ym.slice(5, 7))} 月的森林：{season.text}</p>
@@ -124,7 +140,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
             <div className="mt-3 rounded-2xl bg-[#F3ECDA] px-4 py-3 text-center text-[13.5px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
           )}
           {fruits > 0 && (
-            <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">孩子選了「😍 好喜歡」或這個月讀了 2 次以上的書，就會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
+            <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">重讀的書、爸媽標成最喜歡的書，還有森林偶爾送來的驚喜，都會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
           )}
 
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -224,7 +240,7 @@ function LeafDetail({ leaf, sp, ym, child, family, onClose, onChanged }) {
         <dt className="text-ink-soft">孩子的喜歡</dt><dd>{leaf.topMood ? `${MOODS[leaf.topMood].e} ${MOODS[leaf.topMood].t}` : '還沒選'}</dd>
         <dt className="text-ink-soft">家長備註</dt><dd>{[...notes, leaf.parentNote].filter(Boolean).map((n, i) => <span key={i} className="block">「{n}」</span>)}{!notes.length && !leaf.parentNote && '—'}</dd>
       </dl>
-      {leaf.fruit && <div className="notice mt-4">{sp.verb ? '開出' : '結出了'}{sp.fruitName}：{leaf.loved ? '孩子選了「😍 好喜歡」' : '這個月讀了 2 次以上'}。</div>}
+      {leaf.fruit && <div className="notice mt-4">{sp.verb ? '開出' : '結出了'}{sp.fruitName}：{FRUIT_REASON_TEXT[leaf.fruitWhy]}。</div>}
       {ym === ymOf(ymd()) && <button className="btn-gold btn-block mt-4" disabled={busy} onClick={again}>{busy ? '記錄中…' : '今天又讀了這本'}</button>}
       <p className="hint mt-3">要補記孩子的喜歡程度，可以到「繪本書房」點這本書。</p>
     </Sheet>
