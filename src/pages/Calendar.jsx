@@ -17,11 +17,11 @@ export default function Calendar({ child, refresh, onChanged, onAddOn }) {
     setError('')
     setRows(null)
     const { data, error: err } = await supabase.from('reading_sessions')
-      .select('id, read_on, mood, note, created_at, child_book_id, child_books(category_id), books(id, title, cover_url)')
+      .select('id, read_on, mood, note, created_at, child_book_id, child_books(category_id, cover_url), books(id, title, cover_url)')
       .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01')
       .order('read_on').order('created_at')
     if (err) return setError(zhError(err))
-    setRows(data)
+    setRows(data.map((r) => (r.child_books?.cover_url ? { ...r, books: { ...r.books, cover_url: r.child_books.cover_url } } : r)))
   }, [child.id, ym])
   useEffect(() => { load() }, [load, refresh])
 

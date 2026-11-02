@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
 import { toast } from '../lib/toast'
-import { CATEGORIES, catOf, ymd, dayLabel, MOODS } from '../lib/books'
-import { addSession } from '../lib/records'
+import { CATEGORIES, catOf, ymd, dayLabel, MOODS, suggestCategory } from '../lib/books'
+import { addSession, uploadCover } from '../lib/records'
+import CoverCamera from '../components/CoverCamera'
 import Cover from '../components/Cover'
 import { Sheet } from '../components/ui'
 import { isEnglishBook } from '../lib/visitors'
@@ -19,13 +20,15 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const load = useCallback(async () => {
     setError('')
     const { data, error: err } = await supabase.from('child_books')
-      .select('id, category_id, is_favorite, parent_note, is_english, created_at, books(*), reading_sessions(id, read_on, mood, note)')
+      .select('id, category_id, is_favorite, parent_note, is_english, cover_url, created_at, books(*), reading_sessions(id, read_on, mood, note)')
       .eq('child_id', child.id)
     if (err) return setError(zhError(err))
     setItems(data.map((x) => {
       const ss = [...x.reading_sessions].sort((a, b) => (a.read_on < b.read_on ? 1 : -1))
       const moods = ss.map((s) => s.mood).filter(Boolean)
-      return { ...x, sessions: ss, count: ss.length, last: ss[0]?.read_on || '', love: moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : 0 }
+      // 家庭自己拍的封面優先
+      const books = x.cover_url ? { ...x.books, cover_url: x.cover_url, original_cover: x.books.cover_url } : x.books
+      return { ...x, books, sessions: ss, count: ss.length, last: ss[0]?.read_on || '', love: moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : 0 }
     }))
   }, [child.id])
   useEffect(() => { load() }, [load, refresh])
@@ -97,6 +100,7 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
   const [busy, setBusy] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [confirmDel, setConfirmDel] = useState(null)
+  const [cam, setCam] = useState(false)
   useEffect(() => { setNote(item?.parent_note || ''); setConfirmRemove(false); setConfirmDel(null) }, [item?.id])
   if (!item) return null
   const b = item.books
@@ -108,6 +112,17 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
     if (error) return toast(zhError(error))
     if (ok) toast(ok)
     onChanged()
+  }
+  async function saveCover(file) {
+    setCam(false)
+    setBusy('cover')
+    try {
+      const url = await uploadCover(family.id, file)
+      const { error } = await supabase.from('child_books').update({ cover_url: url }).eq('id', item.id)
+      if (error) throw error
+      toast('封面換好了')
+      onChanged()
+    } catch (e) { toast(/cover_url|schema cache/i.test(e.message || '') ? '請先到 Supabase 執行封面的更新 SQL' : zhError(e)) } finally { setBusy('') }
   }
   async function readToday() {
     setBusy('again')
@@ -121,7 +136,11 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
   return (
     <Sheet open onClose={onClose} title="繪本資料">
       <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-4">
-        <Cover book={b} categoryId={item.category_id} size="md" />
+        <div>
+          <Cover book={b} categoryId={item.category_id} size="md" />
+          <button className="mt-1.5 w-full text-center text-[12px] text-bark underline" disabled={busy === 'cover'} onClick={() => setCam(true)}>{busy === 'cover' ? '上傳中…' : '📷 換封面'}</button>
+          {item.cover_url && <button className="w-full text-center text-[11px] text-ink-soft underline" onClick={() => run('cover0', () => supabase.from('child_books').update({ cover_url: null }).eq('id', item.id), '已恢復原本封面')}>恢復原本封面</button>}
+        </div>
         <div className="min-w-0">
           <h4 className="text-[17px] font-medium leading-snug">{b.title}</h4>
           <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{b.authors?.join('、') || '作者不詳'}{b.publisher && ` · ${b.publisher}`}<br />ISBN {b.isbn13 || '—'}</p>
@@ -135,6 +154,12 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
       <button className="btn-gold btn-block mt-4" disabled={busy === 'again'} onClick={readToday}>{busy === 'again' ? '記錄中…' : '今天又讀了這本'}</button>
 
       <p className="mb-1 mt-5 text-[13px] text-ink-soft">主要分類（決定葉子顏色）{!item.category_id && <b className="ml-1 text-bark">目前：待確認</b>}</p>
+      {!item.category_id && suggestCategory(b) && (
+        <div className="notice mb-2 flex items-center gap-2">
+          <span className="flex-1">建議分類：<b>{catOf(suggestCategory(b).id).name}</b><span className="hint block">依書名「{suggestCategory(b).hits.join('、')}」判斷</span></span>
+          <button className="btn shrink-0 px-3 py-1.5 text-sm" onClick={() => run('cat', () => supabase.from('child_books').update({ category_id: suggestCategory(b).id }).eq('id', item.id), '分類已更新')}>套用</button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-1.5">
         {CATEGORIES.map((c) => (
           <button key={c.id} disabled={!!busy}
@@ -190,6 +215,7 @@ function BookDetail({ item, child, family, onClose, onChanged }) {
                 <button className="btn-danger flex-1" onClick={() => run('rm', () => supabase.from('child_books').delete().eq('id', item.id), '已從書房移除').then(onClose)}>確定移除</button></div>
             </div>}
       </div>
+      {cam && <CoverCamera onDone={(f) => saveCover(f)} onClose={() => setCam(false)} />}
     </Sheet>
   )
 }
