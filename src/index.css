@@ -52,3 +52,76 @@
 @keyframes sf-flap { from { transform: scaleX(1) } to { transform: scaleX(.55) } }
 @keyframes sf-hop { 0%, 80%, 100% { translate: 0 0 } 88% { translate: 0 -4px } }
 @keyframes sf-float { 0%, 100% { translate: 0 0 } 50% { translate: 6px -5px } }
+.sf-tree .sf-bud path { animation: sf-bud 2.4s ease-in-out infinite; }
+.sf-tree .sf-grow .sf-in { transform-box: fill-box; transform-origin: 0 50%; animation: sf-grow 1.2s cubic-bezier(.2,.9,.3,1.25) both; }
+.sf-tree .sf-flash .sf-in { animation: sf-flash 1.8s ease-in-out; }
+.sf-tree .sf-pop > g { transform-box: fill-box; transform-origin: 50% 0; animation: sf-pop 1s cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes sf-bud { 0%, 100% { opacity: .45 } 50% { opacity: .9 } }
+@keyframes sf-grow { 0% { transform: scale(0) rotate(-30deg); opacity: 0 } 60% { opacity: 1 } 100% { transform: scale(1) rotate(0) } }
+@keyframes sf-flash { 0%, 100% { filter: none } 40% { filter: drop-shadow(0 0 6px #F3DE9A) brightness(1.18) } }
+@keyframes sf-pop { 0% { scale: 0 } 100% { scale: 1 } }
+
+/* 孩子模式：澆水 */
+.sf-drop { position: absolute; width: 10px; height: 14px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #8EAEBB; opacity: 0; animation: sf-fall 1.1s ease-in forwards; }
+@keyframes sf-fall { 0% { transform: translateY(-20px); opacity: 0 } 15% { opacity: .9 } 100% { transform: translateY(220px); opacity: 0 } }
+.sf-can { transition: transform .5s; }
+.sf-can.pour { transform: rotate(-35deg) translate(-6px, -4px); }
+
+/* 減少動畫（設定開關） */
+.calm *, .calm *::before, .calm *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+
+/* 英文書森林訪客 */
+.sf-tree .sf-visitor { cursor: pointer; }
+.sf-tree .sf-visitor > :not(rect) { animation: sf-bob 3.2s ease-in-out infinite; animation-delay: inherit; }
+@keyframes sf-bob { 0%, 70%, 100% { translate: 0 0 } 80% { translate: 0 -3px } 90% { translate: 0 0 } }
+
+/* 孩子模式入口：水壺搖一搖 */
+.sf-wiggle { animation: sf-wiggle 2.6s ease-in-out infinite; }
+@keyframes sf-wiggle { 0%, 70%, 100% { rotate: 0deg } 76% { rotate: -9deg } 82% { rotate: 8deg } 88% { rotate: -5deg } 94% { rotate: 3deg } }
+
+/* 孩子模式：天氣 */
+.sf-sky-day { background: linear-gradient(180deg, #EAF2F1 0%, #F8F4EB 70%); }
+.sf-sky-rain { background: linear-gradient(180deg, #CFD8DA 0%, #E6E7E0 75%); }
+.sf-sky-night { background: linear-gradient(180deg, #2E3A52 0%, #4A5470 60%, #6E7186 100%); }
+.sf-sky-night .sf-tree svg { filter: brightness(.72) saturate(.85); }
+.sf-rain { position: absolute; top: -10%; width: 2px; height: 16px; border-radius: 2px; background: #8EAEBB; opacity: .7; animation: sf-rainfall 1s linear infinite; }
+@keyframes sf-rainfall { from { transform: translateY(0) } to { transform: translateY(520px) } }
+.sf-star { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #FFF6D0; animation: sf-twinkle 2.6s ease-in-out infinite; }
+@keyframes sf-twinkle { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+.sf-firefly { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #F3E58A; box-shadow: 0 0 10px 3px #F3E58A; animation: sf-ff 4s ease-in-out infinite; }
+@keyframes sf-ff { 0%, 100% { opacity: .1; translate: 0 0 } 50% { opacity: 1; translate: 12px -14px } }
+.sf-sun { animation: sf-spin 18s linear infinite; }
+@keyframes sf-spin { to { rotate: 360deg } }
+.sf-cloud { animation: sf-cloud 22s linear infinite; }
+@keyframes sf-cloud { from { left: -15% } to { left: 105% } }
+
+/* 孩子模式：心情回應 */
+.sf-up { bottom: 20%; opacity: 0; animation: sf-up 1.8s ease-out forwards; }
+@keyframes sf-up { 0% { opacity: 0; translate: 0 0; scale: .5 } 20% { opacity: 1; scale: 1 } 100% { opacity: 0; translate: 0 -200px } }
+.sf-fly { left: -10%; opacity: 0; animation: sf-fly 2.4s ease-in-out forwards; }
+@keyframes sf-fly { 0% { opacity: 0; left: -10% } 15% { opacity: 1 } 50% { translate: 0 -24px } 85% { opacity: 1 } 100% { opacity: 0; left: 105% } }
+.sf-drift { left: -20%; font-size: 4rem; animation: sf-drift 2.6s ease-in-out forwards; }
+@keyframes sf-drift { 0% { left: -20% } 40%, 70% { left: 36% } 100% { left: 110% } }
+.sf-drip { top: 26%; opacity: 0; font-size: 1.2rem; animation: sf-drip 1s ease-in forwards; }
+@keyframes sf-drip { 0% { opacity: 0; translate: 0 0 } 20% { opacity: 1 } 100% { opacity: 0; translate: 0 160px } }
+
+/* 封面翻翻樂 */
+.sf-card { perspective: 800px; }
+.sf-card-face { position: absolute; inset: 0; backface-visibility: hidden; transition: transform .45s; }
+.sf-card-front { transform: rotateY(180deg); }
+.sf-card.is-up .sf-card-back { transform: rotateY(180deg); }
+.sf-card.is-up .sf-card-front { transform: rotateY(0); }
+.sf-card.is-done .sf-card-front { box-shadow: 0 0 0 3px #D6B65E; animation: sf-match .5s ease-out; }
+@keyframes sf-match { 50% { scale: 1.08 } }
+.sf-confetti { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: sf-confetti 2.2s ease-in forwards; }
+@keyframes sf-confetti { to { transform: translateY(110vh) rotate(540deg) } }
+.calm .sf-card-face { transition: none; }
+
+/* 拖水壺倒水 */
+.sf-pour { position: absolute; width: 7px; height: 11px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #8EAEBB; opacity: 0; animation: sf-pour .8s ease-in infinite; }
+@keyframes sf-pour { 0% { opacity: 0; transform: translate(0, 0) } 15% { opacity: .95 } 100% { opacity: 0; transform: translate(-14px, 130px) } }
+.is-drinking .sf-bud path { transform-box: fill-box; transform-origin: 0 50%; scale: calc(1 + var(--sf-fill) * .55); fill-opacity: calc(.12 + var(--sf-fill) * .5); }
+.is-pouring .sf-tree svg { animation: sf-sway 1.2s ease-in-out infinite; transform-origin: 50% 95%; }
+@keyframes sf-sway { 0%, 100% { rotate: 0deg } 50% { rotate: .8deg } }
+.sf-hint { animation: sf-hint 1s ease-in-out infinite; }
+@keyframes sf-hint { 0%, 100% { translate: -50% 0 } 50% { translate: -50% -12px } }
