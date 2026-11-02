@@ -96,7 +96,8 @@ function fromGoogle(item) {
     cover_url: httpsify(v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail),
     cover_source: v.imageLinks ? 'google' : 'none',
     source: 'google',
-    source_id: item.id
+    source_id: item.id,
+    language: v.language || null
   }
 }
 
@@ -113,7 +114,8 @@ function fromOpenLibraryData(d, isbn13) {
     cover_url: httpsify(d.cover?.medium || d.cover?.small),
     cover_source: d.cover ? 'openlibrary' : 'none',
     source: 'openlibrary',
-    source_id: d.key || null
+    source_id: d.key || null,
+    language: null
   }
 }
 
@@ -166,7 +168,7 @@ export async function searchTitle(q) {
     if (!navigator.onLine) throw e
   }
   if (!out.length) {
-    const o = await getJson(`https://openlibrary.org/search.json?title=${term}&limit=12&fields=key,title,author_name,isbn,cover_i,publisher,first_publish_year,subject`)
+    const o = await getJson(`https://openlibrary.org/search.json?title=${term}&limit=12&fields=key,title,author_name,isbn,cover_i,publisher,first_publish_year,subject,language`)
     for (const d of o.docs || []) {
       const i13 = (d.isbn || []).find((x) => /^97[89]\d{10}$/.test(x)) || null
       out.push({
@@ -174,7 +176,8 @@ export async function searchTitle(q) {
         published_date: d.first_publish_year ? String(d.first_publish_year) : null, description: null,
         subjects: (d.subject || []).slice(0, 12),
         cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
-        cover_source: d.cover_i ? 'openlibrary' : 'none', source: 'openlibrary', source_id: d.key
+        cover_source: d.cover_i ? 'openlibrary' : 'none', source: 'openlibrary', source_id: d.key,
+        language: d.language?.length === 1 ? (d.language[0] === 'eng' ? 'en' : d.language[0]) : null
       })
     }
   }

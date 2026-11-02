@@ -2,7 +2,7 @@
 import { supabase } from './supabase'
 import { compressImage, ymOf, shiftMonth } from './books'
 
-const BOOK_FIELDS = ['isbn13', 'isbn10', 'title', 'authors', 'publisher', 'published_date', 'description', 'subjects', 'cover_url', 'cover_source', 'source', 'source_id']
+const BOOK_FIELDS = ['isbn13', 'isbn10', 'title', 'authors', 'publisher', 'published_date', 'description', 'subjects', 'cover_url', 'cover_source', 'source', 'source_id', 'language']
 const pick = (b) => Object.fromEntries(BOOK_FIELDS.map((k) => [k, b[k] ?? null]).map(([k, v]) => [k, v === null && (k === 'authors' || k === 'subjects') ? [] : v]))
 
 export async function uploadCover(familyId, file) {
@@ -44,16 +44,17 @@ export async function ensureBook({ book, familyId, userId, suggested }) {
   return data.id
 }
 
-export async function ensureChildBook({ childId, bookId, familyId, categoryId }) {
-  const { data: cb } = await supabase.from('child_books').select('id, category_id').eq('child_id', childId).eq('book_id', bookId).maybeSingle()
+export async function ensureChildBook({ childId, bookId, familyId, categoryId, isEnglish }) {
+  const { data: cb } = await supabase.from('child_books').select('id, category_id, is_english').eq('child_id', childId).eq('book_id', bookId).maybeSingle()
   if (cb) {
-    if (categoryId !== undefined && categoryId !== cb.category_id) {
-      await supabase.from('child_books').update({ category_id: categoryId }).eq('id', cb.id)
-    }
+    const patch = {}
+    if (categoryId !== undefined && categoryId !== cb.category_id) patch.category_id = categoryId
+    if (isEnglish !== undefined && isEnglish !== cb.is_english) patch.is_english = isEnglish
+    if (Object.keys(patch).length) await supabase.from('child_books').update(patch).eq('id', cb.id)
     return { id: cb.id, existed: true }
   }
   const { data, error } = await supabase.from('child_books')
-    .insert({ child_id: childId, book_id: bookId, family_id: familyId, category_id: categoryId ?? null })
+    .insert({ child_id: childId, book_id: bookId, family_id: familyId, category_id: categoryId ?? null, is_english: isEnglish ?? null })
     .select('id').single()
   if (error) throw error
   return { id: data.id, existed: false }
