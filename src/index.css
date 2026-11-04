@@ -131,3 +131,36 @@
 .sf-tree .sf-fbud { animation: sf-bud 2.4s ease-in-out infinite; }
 .sf-tree .sf-flower.sf-grow .sf-in { transform-box: fill-box; transform-origin: 50% 100%; animation: sf-bloom 1.2s cubic-bezier(.2,.9,.3,1.25) both; }
 @keyframes sf-bloom { 0% { transform: scale(.2, 0); opacity: 0 } 60% { opacity: 1 } 100% { transform: scale(1) } }
+
+/* 澆完水：中間的大動畫（共 2.6 秒） */
+.sf-burst-glow { animation: sf-bglow 2.6s ease-out forwards; }
+@keyframes sf-bglow { 0% { opacity: 0; scale: .3 } 30% { opacity: 1; scale: 1 } 75% { opacity: 1 } 100% { opacity: 0; scale: 1.2 } }
+.sf-burst-cover { animation: sf-bcover 2.6s cubic-bezier(.2,.9,.3,1.2) forwards; }
+@keyframes sf-bcover { 0% { opacity: 0; scale: .3; rotate: -8deg } 18% { opacity: 1; scale: 1.05; rotate: 0deg } 30% { scale: 1 } 40% { opacity: 1; scale: 1 } 50% { opacity: 0; scale: .4; rotate: 25deg } 100% { opacity: 0 } }
+.sf-burst-leaf { opacity: 0; animation: sf-bleaf 2.6s cubic-bezier(.3,1.4,.5,1) forwards; }
+@keyframes sf-bleaf { 0%, 40% { opacity: 0; scale: .2; rotate: -40deg; translate: 0 0 } 55% { opacity: 1; scale: 1.15; rotate: 6deg } 62% { scale: 1; rotate: 0deg } 78% { opacity: 1; scale: 1; translate: 0 0 } 100% { opacity: 0; scale: .12; translate: 0 -120px } }
+.sf-burst-shine { animation: sf-bshine .5s ease-in-out 1.2s 3 alternate; }
+@keyframes sf-bshine { to { filter: drop-shadow(0 0 14px #F3DE9A) brightness(1.25) } }
+.sf-burst-fruit { opacity: 0; animation: sf-bfruit 1.4s cubic-bezier(.2,.9,.3,1.5) 1.15s forwards; }
+@keyframes sf-bfruit { 0% { opacity: 0; scale: 0 } 40% { opacity: 1; scale: 1.3 } 60%, 100% { opacity: 1; scale: 1 } }
+.sf-burst-spark { opacity: 0; animation: sf-bspark .9s ease-out forwards; }
+@keyframes sf-bspark { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) } 30% { opacity: 1 } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-120px) } }
+.sf-burst-label { opacity: 0; animation: sf-blabel 2.6s ease-out forwards; }
+@keyframes sf-blabel { 0%, 45% { opacity: 0; translate: 0 16px } 58%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
+
+/* 澆水：大水壺、大水滴、水花、樹跳一下、彩虹 */
+.sf-bigcan { animation: sf-bigcan-in .45s cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes sf-bigcan-in { from { translate: 60px 260px; scale: .4; opacity: 0 } to { translate: 0 0; scale: 1; opacity: 1 } }
+.sf-bigcan-tilt { transform-origin: 40% 60%; animation: sf-bigcan-tilt .4s ease-out .3s both, sf-bigcan-shake .25s ease-in-out .7s infinite alternate; }
+@keyframes sf-bigcan-tilt { from { rotate: 0deg } to { rotate: -48deg } }
+@keyframes sf-bigcan-shake { from { translate: 0 0 } to { translate: -2px 2px } }
+.sf-bigdrop { top: 14%; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #7FA7BA; opacity: 0; animation-name: sf-bigdrop; animation-timing-function: ease-in; animation-iteration-count: infinite; animation-fill-mode: both; }
+@keyframes sf-bigdrop { 0% { opacity: 0; transform: translateY(0) } 10% { opacity: .95 } 90% { opacity: .9 } 100% { opacity: 0; transform: translateY(330px) } }
+.sf-splash { opacity: 0; animation: sf-splash .9s ease-out infinite; }
+@keyframes sf-splash { 0% { opacity: .9; scale: .2 } 100% { opacity: 0; scale: 1.3 } }
+.sf-splashdrop { opacity: 0; animation: sf-splashdrop .7s ease-out infinite; }
+@keyframes sf-splashdrop { 0% { opacity: 1; transform: translate(0, 0) } 50% { transform: translate(calc(var(--dx) * .6), -26px) } 100% { opacity: 0; transform: translate(var(--dx), 4px) } }
+.sf-jump { transform-origin: 50% 92%; animation: sf-jump .9s cubic-bezier(.3,1.6,.5,1); }
+@keyframes sf-jump { 0% { transform: scale(1, 1) } 20% { transform: scale(1.08, .9) } 45% { transform: translateY(-22px) scale(.96, 1.08) } 70% { transform: translateY(0) scale(1.04, .97) rotate(-1.5deg) } 85% { transform: rotate(1.5deg) } 100% { transform: none } }
+.sf-rainbow { opacity: 0; animation: sf-rainbow 6s ease-in-out forwards; }
+@keyframes sf-rainbow { 0% { opacity: 0; clip-path: inset(0 100% 0 0) } 20% { opacity: 1; clip-path: inset(0 0 0 0) } 80% { opacity: 1 } 100% { opacity: 0 } }
