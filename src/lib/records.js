@@ -61,13 +61,14 @@ export async function ensureChildBook({ childId, bookId, familyId, categoryId, i
 }
 
 // 新增一筆共讀；回傳這個月是不是第一次讀（新葉子）
-export async function addSession({ childBookId, childId, bookId, familyId, readOn, note }) {
+export async function addSession({ childBookId, childId, bookId, familyId, readOn, note, extra }) {
   const month = ymOf(readOn)
   const { count } = await supabase.from('reading_sessions').select('id', { count: 'exact', head: true })
     .eq('child_book_id', childBookId).gte('read_on', month + '-01').lt('read_on', shiftMonth(month, 1) + '-01')
   const { error } = await supabase.from('reading_sessions').insert({
     child_book_id: childBookId, child_id: childId, book_id: bookId, family_id: familyId,
-    read_on: readOn, note: note?.trim() || null
+    read_on: readOn, note: note?.trim() || null,
+    ...(extra || {}) // 雜誌：issue、issue_cover_url、has_english
   })
   if (error) throw error
   return { newLeaf: !count }
