@@ -30,7 +30,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     setError('')
     const [s, t] = await Promise.all([
       supabase.from('reading_sessions')
-        .select('id, read_on, mood, note, growth_shown_at, child_book_id, child_books(category_id, parent_note, is_english, cover_url, is_favorite), books(id, title, cover_url, authors, language, kind)')
+        .select('*, child_books(category_id, parent_note, is_english, cover_url, is_favorite), books(id, title, cover_url, authors, language, kind)')
         .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01').order('read_on'),
       supabase.from('tree_choices').select('species').eq('child_id', child.id).eq('month', ym + '-01').maybeSingle()
     ])
@@ -49,6 +49,11 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       m.get(r.child_book_id).sessions.push(r)
     }
     return [...m.values()].map((l) => {
+      // 雜誌：有讀英文單元就算英文（招來訪客），封面用最新一期拍的
+      if (l.mag) {
+        const withCover = l.sessions.filter((s) => s.issue_cover_url).sort((a, b) => (a.read_on < b.read_on ? 1 : -1))[0]
+        l = { ...l, en: l.sessions.some((s) => s.has_english), book: withCover ? { ...l.book, cover_url: withCover.issue_cover_url } : l.book }
+      }
       const moods = l.sessions.map((s) => s.mood).filter(Boolean)
       const base = { ...l, count: l.sessions.length, first: l.sessions[0].read_on, topMood: topMood(moods) }
       const why = base.mag ? null : fruitReason(base)
@@ -59,18 +64,21 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
   // 雜誌是樹下的花，不算樹上的葉子
   const bookLeaves = useMemo(() => leaves.filter((l) => !l.mag), [leaves])
   const flowers = useMemo(() => leaves.filter((l) => l.mag), [leaves])
+  // 還沒在孩子模式澆水的書，在這裡也只是花苞，要等孩子澆水才長成葉子
+  const pendingIds = useMemo(() => leaves.filter((l) => !l.sessions.some((s) => s.growth_shown_at)).map((l) => l.id), [leaves])
+  const grownLeaves = useMemo(() => bookLeaves.filter((l) => !pendingIds.includes(l.id)), [bookLeaves, pendingIds])
   const isCurrent = ym === thisMonth
   const speciesId = choice || SPECIES_LIST[hashStr(child.id + ym) % SPECIES_LIST.length].id
   const sp = SPECIES[speciesId]
   const canChange = isCurrent && (!choice || leaves.every((l) => l.sessions.every((x) => !x.growth_shown_at)))
   const needsPick = isCurrent && choice === null
-  const stage = stageOf(bookLeaves.length)
+  const stage = stageOf(grownLeaves.length)
   const season = SEASONS[Number(ym.slice(5, 7))]
-  const fruits = leaves.filter((l) => l.fruit).length
+  const fruits = leaves.filter((l) => l.fruit && !pendingIds.includes(l.id)).length
   const counts = {}
   leaves.forEach((l) => { const k = l.cat || 'none'; counts[k] = (counts[k] || 0) + 1 })
   const open = leaves.find((l) => l.id === openId)
-  const visitors = useMemo(() => buildVisitors(bookLeaves, child.id, ym, speciesId, hashStr), [bookLeaves, child.id, ym, speciesId])
+  const visitors = useMemo(() => buildVisitors(leaves.filter((l) => !pendingIds.includes(l.id)), child.id, ym, speciesId, hashStr), [leaves, pendingIds, child.id, ym, speciesId])
   const waiting = rows ? rows.filter((r) => !r.growth_shown_at).length : 0
 
   async function pick(id) {
@@ -97,7 +105,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       {rows && (
         <>
           <p className="mt-1 text-center text-[13px] text-ink-soft">
-            {needsPick ? '還沒選樹' : sp.name}{bookLeaves.length ? ` · ${bookLeaves.length} 片故事葉` : ''}{flowers.length ? ` · ${flowers.length} 朵雜誌花` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
+            {needsPick ? '還沒選樹' : sp.name}{grownLeaves.length ? ` · ${grownLeaves.length} 片故事葉` : ''}{flowers.length ? ` · ${flowers.length} 朵雜誌花` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
             {canChange && choice && <button className="ml-2 text-[12px] underline" onClick={() => setPicker(true)}>換一棵</button>}
           </p>
 
@@ -112,7 +120,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
               {bookLeaves.length > 18 && (
                 <button className="absolute right-2 top-2 z-10 rounded-full border border-line bg-paper/90 px-3 py-1 text-[12.5px]" onClick={() => setZoom(!zoom)}>{zoom ? '縮小' : '放大看葉子'}</button>
               )}
-              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} zoom={zoom} onPick={setOpenId}
+              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} pendingIds={pendingIds} zoom={zoom} onPick={setOpenId}
                 visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
             </div>
           )}

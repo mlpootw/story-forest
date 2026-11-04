@@ -6,6 +6,7 @@ import { toast, copyText } from '../lib/toast'
 import { Avatar, Sheet } from '../components/ui'
 import { getCalm, setCalm } from '../lib/prefs'
 import ChildForm from '../components/ChildForm'
+import VoiceRecorder from '../components/VoiceRecorder'
 
 const fmtDate = (s) => new Date(s).toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
 
@@ -189,6 +190,13 @@ export default function FamilySettings({ session, data, reload, onBack }) {
             <span className={`absolute top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-all ${calm ? 'left-[23px]' : 'left-[3px]'}`} />
           </button>
         </div>
+      </section>
+
+      {/* 小樹的聲音 */}
+      <section className="section">
+        <h2 className="h-hand mb-1 text-lg">🎙️ 錄小樹的聲音</h2>
+        <p className="hint mb-3">兒童模式裡的小樹會用你的聲音說話。沒錄的句子不出聲，隨時可以回來錄。</p>
+        <VoiceRecorder familyId={family.id} />
       </section>
 
       {/* 資料 */}

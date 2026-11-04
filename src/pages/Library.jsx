@@ -22,7 +22,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
   const load = useCallback(async () => {
     setError('')
     const { data, error: err } = await supabase.from('child_books')
-      .select('id, category_id, is_favorite, parent_note, is_english, cover_url, created_at, books(*), reading_sessions(id, read_on, mood, note)')
+      .select('id, category_id, is_favorite, parent_note, is_english, cover_url, created_at, books(*), reading_sessions(*)')
       .eq('child_id', child.id)
     if (err) return setError(zhError(err))
     setItems(data.map((x) => {
@@ -206,7 +206,7 @@ function BookDetail({ item, child, family, onClose, onChanged, onShare }) {
       <ul>
         {item.sessions.map((s) => (
           <li key={s.id} className="flex items-center gap-2 border-b border-line py-2 text-[13.5px]">
-            <span className="w-20 shrink-0 tabular-nums">{dayLabel(s.read_on)}</span>
+            <span className="w-20 shrink-0 tabular-nums">{dayLabel(s.read_on)}{s.issue && <small className="block text-[11px] leading-tight text-ink-soft">{s.issue}{s.has_english ? ' 🐰' : ''}</small>}</span>
             <span className="flex flex-1 gap-0.5">
               {[3, 2, 1].map((m) => (
                 <button key={m} aria-label={MOODS[m].t} title={MOODS[m].t}

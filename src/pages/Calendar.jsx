@@ -17,11 +17,11 @@ export default function Calendar({ child, refresh, onChanged, onAddOn }) {
     setError('')
     setRows(null)
     const { data, error: err } = await supabase.from('reading_sessions')
-      .select('id, read_on, mood, note, created_at, child_book_id, child_books(category_id, cover_url), books(id, title, cover_url)')
+      .select('*, child_books(category_id, cover_url), books(id, title, cover_url, kind)')
       .eq('child_id', child.id).gte('read_on', ym + '-01').lt('read_on', shiftMonth(ym, 1) + '-01')
       .order('read_on').order('created_at')
     if (err) return setError(zhError(err))
-    setRows(data.map((r) => (r.child_books?.cover_url ? { ...r, books: { ...r.books, cover_url: r.child_books.cover_url } } : r)))
+    setRows(data.map((r) => { const c = r.issue_cover_url || r.child_books?.cover_url; return c ? { ...r, books: { ...r.books, cover_url: c } } : r }))
   }, [child.id, ym])
   useEffect(() => { load() }, [load, refresh])
 
@@ -96,6 +96,7 @@ export default function Calendar({ child, refresh, onChanged, onAddOn }) {
                 <div className="min-w-0">
                   <div className="truncate font-medium">{r.books.title}</div>
                   <div className="text-[12.5px] text-ink-soft">{r.mood ? `${MOODS[r.mood].e} ${MOODS[r.mood].t}` : '還沒記心情'} · 本月共讀 {monthCount(r.child_book_id)} 次</div>
+                  {r.issue && <div className="mt-0.5 text-[12.5px] text-ink-soft">🌼 {r.issue}{r.has_english ? ' · 有讀英文 🐰' : ''}</div>}
                   {r.note && <div className="mt-0.5 text-[12.5px] text-bark">「{r.note}」</div>}
                 </div>
                 {confirmDel === r.id
