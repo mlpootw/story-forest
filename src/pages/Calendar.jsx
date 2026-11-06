@@ -1,3 +1,5 @@
+import { Sun, Squiggle } from '../components/Doodles'
+import { art } from '../lib/art'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
@@ -46,7 +48,7 @@ export default function Calendar({ child, refresh, onChanged, onAddOn }) {
     <div>
       <div className="mb-1 mt-1 flex items-center justify-between">
         <button className="h-10 w-10 rounded-full border border-line text-lg" aria-label="上個月" onClick={() => { setYm(shiftMonth(ym, -1)); setDay(null) }}>‹</button>
-        <h2 className="h-hand text-[22px]">{monthLabel(ym)}</h2>
+        <div className="relative text-center"><Sun className="absolute -right-12 -top-5 h-12 w-12" /><h2 className="h-hand text-[22px]">{monthLabel(ym)}</h2><Squiggle className="mx-auto -mt-0.5 block h-2.5 w-28" color="#8FC1D4" /></div>
         <button className="h-10 w-10 rounded-full border border-line text-lg disabled:opacity-30" aria-label="下個月" disabled={shiftMonth(ym, 1) > ymOf(today)} onClick={() => { setYm(shiftMonth(ym, 1)); setDay(null) }}>›</button>
       </div>
 
@@ -76,7 +78,8 @@ export default function Calendar({ child, refresh, onChanged, onAddOn }) {
 
       {error && <div className="error-box mt-4">{error} <button className="underline" onClick={load}>重試</button></div>}
       {rows && (
-        <div className="mt-3 flex justify-center gap-5 text-[13px] text-ink-soft">
+        <div className="sf-frame sf-frame-sun relative mt-4 flex justify-center gap-5 rounded-[20px] bg-[#FBF3E2] px-3 py-3 text-[13px] text-ink-soft">
+          <img src={art('snail')} alt="" className="pointer-events-none absolute -top-9 left-3 h-10 w-auto" /><img src={art('flowers')} alt="" className="pointer-events-none absolute -top-11 right-4 h-12 w-auto" />
           <span>共讀天數 <b className="text-base tabular-nums text-ink">{Object.keys(byDay).length}</b></span>
           <span>共讀次數 <b className="text-base tabular-nums text-ink">{rows.length}</b></span>
           <span>不同繪本 <b className="text-base tabular-nums text-ink">{distinct}</b></span>

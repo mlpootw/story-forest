@@ -6,6 +6,8 @@ import FamilySettings from './FamilySettings'
 import Library from './Library'
 import Calendar from './Calendar'
 import Garden from './Garden'
+import { CrayonDefs, NavIcons } from '../components/Doodles'
+import { art } from '../lib/art'
 
 const TABS = [
   ['garden', '我的花園', <path key="g" d="M12 21v-7M12 14c-3 0-5.5-2-5.5-5S9 3 12 3s5.5 3 5.5 6-2.5 5-5.5 5zM5 21h14" />],
@@ -32,10 +34,12 @@ export default function Shell({ session, data, reload }) {
 
   return (
     <div className="page pb-32">
+      <CrayonDefs />
       <header className="sticky z-20 -mx-4 flex items-center gap-2 bg-paper px-4 pb-2 pt-3" style={{ top: 'env(safe-area-inset-top)' }}>
         <div className="min-w-0 flex-1">
-          <b className="h-hand block truncate text-[18.5px]">小小書房｜故事森林</b>
-          <small className="block truncate text-[11.5px] tracking-wider text-ink-soft">{family.name}</small>
+          <b className="h-hand flex items-center gap-1.5 truncate text-[19px]">
+            小小書房｜故事森林<img src={art('whiteeye-fly')} alt="" className="-mt-1 h-8 w-auto shrink-0" /></b>
+          <small className="block truncate text-[12.5px] tracking-wider text-ink-soft">{family.name}</small>
         </div>
         <button className="flex items-center gap-1.5 rounded-full border border-line bg-paper-card py-1 pl-1 pr-3" onClick={() => setPickChild(true)} aria-label="切換孩子">
           <Avatar child={child} /><span className="text-sm">{child.nickname}</span>
@@ -58,13 +62,13 @@ export default function Shell({ session, data, reload }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="主要導覽">
         <div className="mx-auto grid h-16 max-w-[480px] grid-cols-[1fr_1fr_76px_1fr_1fr] items-end">
-          {TABS.slice(0, 2).map(([k, t, d]) => <TabBtn key={k} on={tab === k} label={t} d={d} onClick={() => setTab(k)} />)}
+          {TABS.slice(0, 2).map(([k, t]) => <TabBtn key={k} on={tab === k} label={t} icon={NavIcons[k]} onClick={() => setTab(k)} />)}
           <button className="relative h-full" aria-label="新增繪本" onClick={() => setAdd({})}>
-            <span className="absolute bottom-3.5 left-1/2 grid h-[62px] w-[62px] -translate-x-1/2 place-items-center rounded-full bg-sage text-white shadow-[0_4px_14px_rgba(95,132,104,.45),0_0_0_5px_#F8F4EB]">
+            <span className="absolute bottom-3.5 left-1/2 grid h-[62px] w-[62px] -translate-x-1/2 place-items-center rounded-full sf-fab bg-sage-deep text-white">
               <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </span>
           </button>
-          {TABS.slice(2).map(([k, t, d]) => <TabBtn key={k} on={tab === k} label={t} d={d} onClick={() => setTab(k)} />)}
+          {TABS.slice(2).map(([k, t]) => <TabBtn key={k} on={tab === k} label={t} icon={NavIcons[k]} onClick={() => setTab(k)} />)}
         </div>
       </nav>
 
@@ -82,10 +86,10 @@ export default function Shell({ session, data, reload }) {
   )
 }
 
-function TabBtn({ on, label, d, onClick }) {
+function TabBtn({ on, label, icon, onClick }) {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center gap-0.5 pb-2 pt-2 text-[11.5px] ${on ? 'font-bold text-sage-deep' : 'text-ink-soft'}`} aria-current={on ? 'page' : undefined}>
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+    <button onClick={onClick} className={`flex flex-col items-center gap-0.5 pb-1.5 pt-1.5 text-[12.5px] ${on ? 'sf-tab-on font-bold text-sage-deep' : 'text-ink-soft'}`} aria-current={on ? 'page' : undefined}>
+      <span className="sf-tab-blob grid h-9 w-12 place-items-center"><svg viewBox="0 0 64 64" className={`h-8 w-8 transition ${on ? 'scale-110' : 'opacity-60 saturate-50'}`} aria-hidden="true"><g filter="url(#sf-crayon)">{icon}</g></svg></span>
       {label}
     </button>
   )

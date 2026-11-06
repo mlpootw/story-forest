@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { SPECIES, SEASONS, groundFlower, animal } from '../lib/trees'
 import { catOf } from '../lib/books'
 import { visitorSvg } from '../lib/visitors'
+import { art } from '../lib/art'
 
 /* ---------- 穩定的亂數：同樣的資料永遠畫出同樣的樹 ---------- */
 export function hashStr(s) {
@@ -115,7 +116,7 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
   // 葉子位置：依書的編號決定，重新整理也不會變
   const used = new Set()
   const A = T.anchors.length ? T.anchors : [{ x: BASE_X, y: BASE_Y - 30, a: -60 }]
-  const scale = (n > 30 ? 0.95 : n > 20 ? 1.1 : 1.35) * sp.leafScale
+  const scale = (n > 30 ? 1.1 : n > 20 ? 1.3 : 1.6) * sp.leafScale
   const placed = leaves.map((l, idx) => {
     let i = hashStr(l.id + ym) % A.length
     let g = 0
@@ -128,15 +129,16 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
     return { l, p, rot }
   })
 
-  const wash = stage >= 3 ? `<g filter="url(#blur)">${Array.from({ length: 5 }, () => `<circle cx="${f1(T.top.x + (r() - 0.5) * 170)}" cy="${f1((T.top.y + BASE_Y) / 2 - 30 + (r() - 0.5) * 90)}" r="${f1(40 + r() * 40)}" fill="#83A48A" opacity=".1"/>`).join('')}</g>` : ''
-  const br = T.branches.map((b) => `<path d="${b.d}" stroke="${sp.trunk}" stroke-width="${b.w}" stroke-linecap="round" fill="none" opacity=".9"/><path d="${b.d}" stroke="#D2BDA6" stroke-width="${f1(b.w * 0.32)}" stroke-linecap="round" fill="none" opacity=".45" transform="translate(-${f1(b.w * 0.18)},0)"/>`).join('')
+  const wash = stage >= 3 ? `<g filter="url(#blur)">${Array.from({ length: 5 }, () => `<circle cx="${f1(T.top.x + (r() - 0.5) * 170)}" cy="${f1((T.top.y + BASE_Y) / 2 - 30 + (r() - 0.5) * 90)}" r="${f1(40 + r() * 40)}" fill="#9CC38A" opacity=".2"/>`).join('')}</g>` : ''
+  const brOut = T.branches.map((b) => `<path d="${b.d}" stroke="#5E4636" stroke-width="${f1(b.w + 3.4)}" stroke-linecap="round" fill="none" opacity=".85"/>`).join('')
+  const br = T.branches.map((b) => `<path d="${b.d}" stroke="${sp.trunk}" stroke-width="${b.w}" stroke-linecap="round" fill="none"/><path d="${b.d}" stroke="#D2BDA6" stroke-width="${f1(b.w * 0.32)}" stroke-linecap="round" fill="none" opacity=".45" transform="translate(-${f1(b.w * 0.18)},0)"/>`).join('')
   const fronds = (T.fronds || []).map((d) => `<path d="${d}" stroke="#A9BE8E" stroke-width="${stage >= 3 ? 9 : 6}" stroke-linecap="round" fill="none" opacity=".55"/><path d="${d}" stroke="#8FA676" stroke-width="1.2" fill="none" opacity=".8"/>`).join('')
 
   let grass = ''
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 12; i++) {
     const x = 40 + r() * 280
     const h = 6 + r() * 10
-    grass += `<path d="M${f1(x)},336 q${f1(r() * 4 - 2)},-${f1(h / 2)} ${f1(r() * 6 - 3)},-${f1(h)}" stroke="#83A48A" stroke-width="1.2" fill="none" opacity=".7" stroke-linecap="round"/>`
+    grass += `<path d="M${f1(x)},336 q${f1(r() * 4 - 2)},-${f1(h / 2)} ${f1(r() * 6 - 3)},-${f1(h)}" stroke="#6F9A63" stroke-width="2" fill="none" opacity=".85" stroke-linecap="round"/>`
   }
   let groundFlowers = ''
   const fr = rng(hashStr('f' + ym))
@@ -155,24 +157,24 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
     return `<g class="${cls}" data-book="${l.id}" transform="${tf}">
       <circle r="14" cx="9" fill="transparent"/>
       ${glow ? '<circle class="sf-glow" cx="9" r="13" fill="url(#glow)"/>' : ''}
-      <g class="sf-in"><path d="${sp.leaf}" fill="${c.color}" opacity=".92" filter="url(#wc)"/>
+      <g class="sf-in"><path d="${sp.leaf}" fill="${c.color}" opacity=".9" filter="url(#wc)"/><path d="${sp.leaf}" fill="url(#t-hatch)" opacity=".5"/><path d="${sp.leaf}" fill="none" stroke="#4E3E30" stroke-opacity=".75" stroke-width="1.2" stroke-linejoin="round" filter="url(#cr)"/>
       <path d="M1.5,0 Q9,-.8 ${sp.structure === 'banana' ? 24 : 16},0" stroke="#5C5146" stroke-opacity=".28" stroke-width=".8" fill="none"/></g></g>`
   }).join('')
 
   const fruits = placed.filter(({ l }) => l.fruit && !pendingIds.includes(l.id)).map(({ l, p }) => {
     const fx = sp.structure === 'banana' ? T.top.x + ((hashStr(l.id) % 30) - 15) : p.x + 3
     const fy = sp.structure === 'banana' ? T.top.y + 14 + (hashStr(l.id + 'f') % 14) : p.y + 12
-    return `<g class="sf-fruit${popIds.includes(l.id) ? ' sf-pop' : ''}" data-book="${l.id}"><circle cx="${f1(fx)}" cy="${f1(fy)}" r="11" fill="transparent"/>${sp.fruit(Number(f1(fx)), Number(f1(fy)))}</g>`
+    return `<g class="sf-fruit${popIds.includes(l.id) ? ' sf-pop' : ''}" data-book="${l.id}"><circle cx="${f1(fx)}" cy="${f1(fy)}" r="11" fill="transparent"/><g filter="url(#crw)" transform="translate(${f1(fx)},${f1(fy)}) scale(1.18) translate(${f1(-fx)},${f1(-fy)})">${sp.fruit(Number(f1(fx)), Number(f1(fy)))}</g></g>`
   }).join('')
 
   const canopy = stage <= 1 ? [BASE_X + 40, BASE_Y - 70] : [T.top.x + 30, T.top.y + 10]
   const critter = animal(season.animal, { trunkX: BASE_X, groundY: 336, canopy })
   // 英文書帶來的森林訪客，站在草地上
-  const spots = stage <= 1 ? [104, 256, 126, 234, 92, 268] : stage === 2 ? [70, 290, 100, 262, 84, 276] : [58, 304, 96, 268, 34, 326]
+  const spots = stage <= 1 ? [112, 248, 140, 222, 98, 262] : stage === 2 ? [76, 284, 112, 250, 94, 268] : [42, 318, 92, 270, 20, 342]
   const guests = visitors.slice(0, 6).map((v, i) => {
     const x = spots[i] + ((hashStr(v.id) % 9) - 4)
     const flip = x > BASE_X ? -1 : 1
-    return `<g class="sf-visitor" data-visitor="${v.id}" transform="translate(${x},${334 + (i % 2) * 3}) scale(${flip * 0.95},0.95)" style="animation-delay:${(i * 0.7).toFixed(1)}s"><rect x="-14" y="-30" width="28" height="32" fill="transparent"/>${visitorSvg(v.animal)}</g>`
+    return `<g class="sf-visitor" data-visitor="${v.id}" transform="translate(${x},${334 + (i % 2) * 3}) scale(${flip * 0.95},0.95)" style="animation-delay:${(i * 0.7).toFixed(1)}s"><rect x="-26" y="-62" width="52" height="64" fill="transparent"/>${visitorSvg(v.animal)}</g>`
   }).join('')
   // 雜誌：樹下的花，讀越多次開得越大
   const fSpots = [146, 216, 122, 240, 168, 196, 104, 258]
@@ -205,13 +207,16 @@ function renderTree({ seed, ym, speciesId, leaves, pendingIds = [], growIds = []
       <filter id="wc" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2.6"/><feGaussianBlur stdDeviation=".35"/></filter>
       <filter id="wcT" x="-20%" y="-10%" width="140%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="2"/><feDisplacementMap in="SourceGraphic" scale="3.2"/><feGaussianBlur stdDeviation=".5"/></filter>
       <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+      <filter id="cr" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="4" result="w"/><feDisplacementMap in="SourceGraphic" in2="w" scale="2" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="1.3" seed="11" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.95" result="ga"/><feComposite in="d" in2="ga" operator="in"/></filter>
+      <filter id="crw" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency=".07" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter>
+      <pattern id="t-hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><line x1="0" y1="0" x2="0" y2="3" stroke="#fff" stroke-width=".9" stroke-opacity=".55"/></pattern>
+      <pattern id="t-grass" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><line x1="0" y1="0" x2="0" y2="5" stroke="#86AE74" stroke-width="2.2" stroke-opacity=".55"/></pattern>
       <radialGradient id="glow"><stop offset="0" stop-color="#F6E3A4" stop-opacity=".95"/><stop offset="1" stop-color="#F6E3A4" stop-opacity="0"/></radialGradient>
       <radialGradient id="fruitShade" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3E3832" stop-opacity=".22"/></radialGradient>
     </defs>
-    <ellipse cx="180" cy="338" rx="150" ry="13" fill="#A5B6A0" opacity=".4" filter="url(#wcT)"/>
-    <ellipse cx="170" cy="337" rx="96" ry="7" fill="#83A48A" opacity=".25" filter="url(#wcT)"/>
-    ${wash}<g filter="url(#wcT)">${br}${fronds}</g>${seedEl}${grass}${groundFlowers}
-    <g>${lv}</g><g>${fruits}</g>${blooms}${critter}${guests}`
+    <image href="${art('grass')}" x="4" y="321" width="352" height="46" preserveAspectRatio="none"/>
+    ${wash}<g filter="url(#cr)">${brOut}</g><g filter="url(#wcT)">${br}${fronds}</g>${seedEl}<g filter="url(#cr)">${grass}</g><g filter="url(#crw)">${groundFlowers}</g>
+    <g>${lv}</g><g>${fruits}</g><g filter="url(#crw)">${blooms}</g>${critter}<g filter="url(#crw)">${guests}</g>`
 }
 
 const EMPTY = []

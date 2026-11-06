@@ -11,7 +11,7 @@ export default function VisitorCard({ visitor, onClose, autoSpeak = true }) {
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-[#3E3832]/50 p-6" onClick={onClose} role="dialog" aria-label={`${info.zh}帶來的英文單字`}>
       <div className="w-full max-w-[320px] rounded-[28px] bg-paper px-6 pb-6 pt-4 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <svg viewBox="-24 -36 48 40" className="mx-auto h-28 w-32" dangerouslySetInnerHTML={{ __html: visitorSvg(info.id) }} />
+        <svg viewBox="-34 -66 68 68" className="mx-auto h-32 w-32" dangerouslySetInnerHTML={{ __html: visitorSvg(info.id) }} />
         <p className="text-[13px] text-ink-soft">{info.zh} <span className="font-medium">{info.en}</span> 帶來一個字</p>
         <button className="mt-3 w-full rounded-3xl bg-paper-card px-4 py-4 active:scale-[.98]" onClick={() => speak(word.en)} aria-label={`再聽一次 ${word.en}`}>
           <div className="text-5xl leading-none">{word.emoji}</div>

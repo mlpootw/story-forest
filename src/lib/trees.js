@@ -1,3 +1,4 @@
+import { art } from './art'
 // 樹種、果實、季節元素的設定與繪製（產生 SVG 字串片段）
 
 export const SPECIES = {
@@ -77,42 +78,36 @@ export function groundFlower(type, x, y, rnd) {
   }
 }
 
-// 小動物（座標由繪製函式依樹的大小決定）
+// 小動物（座標由繪製函式依樹的大小決定）— 蠟筆水彩繪本風：大眼睛、紅臉頰、蠟筆輪廓
+const O = 'stroke="#5E4A3B" stroke-width=".9" stroke-linejoin="round" stroke-linecap="round"'
+const eye = (x, y, r = 1.5) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#2F2A25"/><circle cx="${x + r * 0.35}" cy="${y - r * 0.4}" r="${(r * 0.38).toFixed(2)}" fill="#fff"/>`
+const blush = (x, y, rx = 1.9) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${(rx * 0.6).toFixed(2)}" fill="#EE9C9C" opacity=".75"/>`
+const wob = (tf, inner, cls = '') => `<g${cls ? ` class="${cls}"` : ''} transform="${tf}"><g filter="url(#crw)">${inner}</g></g>`
+
 export function animal(type, ctx) {
   const { trunkX, groundY, canopy } = ctx
+  // 以 (x,y) 為中心放一張插圖
+  const img = (name, x, y, w, h, cls = '', inner = '') =>
+    `<g${cls ? ` class="${cls}"` : ''} transform="translate(${x},${y})"><g${inner ? ` class="${inner}"` : ''}><image href="${art(name)}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/></g></g>`
   switch (type) {
-    case 'whiteeye': {
-      const [x, y] = canopy
-      return `<g class="sf-hop" transform="translate(${x},${y})"><ellipse rx="7" ry="5" fill="#A7B65A"/><circle cx="5.5" cy="-3" r="3.6" fill="#B4C266"/><circle cx="6.4" cy="-3.4" r="1.7" fill="#fff"/><circle cx="6.6" cy="-3.4" r=".9" fill="#3E3832"/><path d="M9,-3 l3,.6 -3,.8Z" fill="#5C5146"/><path d="M-6,0 l-5,2 4,1Z" fill="#8E9C48"/><ellipse cx="0" cy="2.4" rx="4.5" ry="2" fill="#E9E2B8"/></g>`
-    }
-    case 'sparrow': {
-      return `<g class="sf-hop" transform="translate(${trunkX + 42},${groundY - 6})"><ellipse rx="7" ry="5" fill="#A0785A"/><circle cx="5.6" cy="-3.2" r="3.6" fill="#8B5E45"/><circle cx="5.6" cy="-2" r="2.4" fill="#F1E6D2"/><circle cx="6.6" cy="-3.8" r=".9" fill="#3E3832"/><path d="M9,-3.2 l2.6,.6 -2.6,.8Z" fill="#5C5146"/><path d="M-6,-1 l-5,1 4,2Z" fill="#6E4C38"/><path d="M-1,5 l-1,3 M2,5 l1,3" stroke="#5C5146" stroke-width=".8"/></g>`
-    }
-    case 'butterfly': {
-      const [x, y] = canopy
-      return `<g transform="translate(${x + 26},${y - 18})"><g class="sf-flap"><ellipse cx="-4" cy="-3" rx="4.5" ry="5.5" fill="#E9B84E" transform="rotate(-20)"/><ellipse cx="4" cy="-3" rx="4.5" ry="5.5" fill="#E9B84E" transform="rotate(20)"/><ellipse cx="-3" cy="3" rx="3" ry="3.4" fill="#D98E4A"/><ellipse cx="3" cy="3" rx="3" ry="3.4" fill="#D98E4A"/></g><rect x="-.8" y="-5" width="1.6" height="10" rx=".8" fill="#5C5146"/></g>`
-    }
+    case 'whiteeye': { const [x, y] = canopy; return img('whiteeye-fly', x + 6, y - 10, 56, 48, 'sf-hop') }
+    case 'sparrow': return img('sparrow', trunkX + 38, groundY - 21, 54, 47, 'sf-hop')
+    case 'butterfly': { const [x, y] = canopy; return img('butterfly', x + 30, y - 26, 52, 48, '', 'sf-flap') }
     case 'firefly': {
       let s = ''
       const pts = [[-70, -40], [60, -60], [-40, -90], [85, -20], [20, -110]]
-      pts.forEach(([dx, dy], i) => { s += `<circle class="sf-blink" style="animation-delay:${i * 0.5}s" cx="${trunkX + dx}" cy="${groundY + dy}" r="3" fill="#F3E58A"/><circle cx="${trunkX + dx}" cy="${groundY + dy}" r="1.2" fill="#FFF9D0"/>` })
+      pts.forEach(([dx, dy], i) => {
+        s += i % 2 === 0
+          ? `<g class="sf-blink" style="animation-delay:${i * 0.5}s">${img('firefly', trunkX + dx, groundY + dy, 36, 36)}</g>`
+          : `<circle class="sf-blink" style="animation-delay:${i * 0.5}s" cx="${trunkX + dx}" cy="${groundY + dy}" r="3.4" fill="#F3E58A"/><circle cx="${trunkX + dx}" cy="${groundY + dy}" r="1.4" fill="#FFF9D0"/>`
+      })
       return s
     }
-    case 'snail': {
-      return `<g transform="translate(${trunkX - 54},${groundY - 4})"><path d="M-8,4 C-8,0 6,0 12,4Z" fill="#C9B79A"/><circle cx="0" cy="-2" r="6" fill="#B98A5E"/><path d="M0,-2 m-3,0 a3,3 0 1,1 3,3 a1.6,1.6 0 1,1 -1.6,-1.6" stroke="#8E6440" stroke-width="1" fill="none"/><path d="M10,2 l2,-6 M12,3 l3,-5" stroke="#B5A486" stroke-width="1"/></g>`
-    }
-    case 'cicada': {
-      return `<g transform="translate(${trunkX + 4},${groundY - 48}) rotate(-90)"><ellipse rx="6" ry="3" fill="#5E5A3E"/><path d="M-2,-2 C4,-10 12,-8 14,-4 C10,-3 4,-2 -2,-1Z" fill="#DDE3D8" opacity=".75"/><path d="M-2,2 C4,10 12,8 14,4 C10,3 4,2 -2,1Z" fill="#DDE3D8" opacity=".75"/><circle cx="-5" cy="-2" r="1" fill="#2F2A25"/><circle cx="-5" cy="2" r="1" fill="#2F2A25"/></g>`
-    }
-    case 'dragonfly':
-    case 'redfly': {
-      const [x, y] = canopy
-      const body = type === 'redfly' ? '#C8513F' : '#5E8CA3'
-      return `<g class="sf-float" transform="translate(${x - 30},${y - 20})"><rect x="-1" y="-2" width="22" height="2.6" rx="1.3" fill="${body}"/><circle cx="-1" cy="-.7" r="2.4" fill="${body}"/><g opacity=".6" fill="#E6EEF2"><ellipse cx="6" cy="-6" rx="7" ry="2.4" transform="rotate(-12 6 -6)"/><ellipse cx="6" cy="5" rx="7" ry="2.4" transform="rotate(12 6 5)"/><ellipse cx="3" cy="-5" rx="6" ry="2" transform="rotate(-30 3 -5)"/><ellipse cx="3" cy="4" rx="6" ry="2" transform="rotate(30 3 4)"/></g></g>`
-    }
-    case 'squirrel': {
-      return `<g transform="translate(${trunkX + 48},${groundY - 8})"><path d="M-6,4 C-14,2 -16,-12 -8,-16 C-4,-18 -2,-12 -6,-8 C-10,-4 -8,0 -4,2Z" fill="#B07A52"/><ellipse cx="2" cy="0" rx="6" ry="6.5" fill="#A0704C"/><circle cx="6" cy="-6" r="4" fill="#A0704C"/><path d="M5,-10 l1,-3 2,3Z" fill="#8B5E45"/><circle cx="7.6" cy="-6.6" r=".9" fill="#2F2A25"/><ellipse cx="4" cy="1" rx="2.4" ry="3.6" fill="#E8D3B6"/><circle cx="8" cy="0" r="2" fill="#7E5A3A"/></g>`
-    }
+    case 'snail': return img('snail', trunkX - 32, groundY - 18, 54, 44)
+    case 'cicada': return img('cicada', trunkX + 18, groundY - 74, 50, 48)
+    case 'dragonfly': { const [x, y] = canopy; return img('bluefly', x - 28, y - 28, 56, 56, 'sf-float') }
+    case 'redfly': { const [x, y] = canopy; return img('redfly', x - 28, y - 28, 56, 56, 'sf-float') }
+    case 'squirrel': return img('squirrel', trunkX + 38, groundY - 24, 60, 50)
     default: return ''
   }
 }

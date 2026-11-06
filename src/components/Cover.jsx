@@ -15,7 +15,7 @@ export default function Cover({ book, categoryId, size = 'md', count }) {
       ) : (
         <>
           <span className="absolute aspect-square rounded-full bg-paper opacity-50" style={{ left: `${20 + (seed % 45)}%`, top: `${52 + (seed % 30)}%`, width: `${42 + (seed % 30)}%` }} />
-          <span className="absolute left-[10%] right-[10%] top-[12%] break-all font-hand font-bold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,.18)]" style={{ fontSize: fs }}>
+          <span className="absolute left-[10%] right-[10%] top-[12%] break-all font-round leading-snug text-white [text-shadow:0_1px_2px_rgba(0,0,0,.18)]" style={{ fontSize: fs }}>
             {book?.title}
           </span>
         </>

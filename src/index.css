@@ -6,7 +6,7 @@
   html, body, #root { min-height: 100%; }
   body {
     @apply bg-paper text-ink font-body antialiased;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.6;
     -webkit-tap-highlight-color: transparent;
   }
@@ -15,23 +15,37 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .47 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   #root { position: relative; z-index: 1; }
+  /* 紙上散落的小彩點 */
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+    background-image: radial-gradient(circle, #F2B84B 1.6px, transparent 2px), radial-gradient(circle, #9CC9D9 1.6px, transparent 2px), radial-gradient(circle, #E07A5F 1.3px, transparent 1.7px);
+    background-size: 140px 140px, 190px 190px, 230px 230px; background-position: 20px 30px, 90px 120px, 160px 60px;
+  }
   :focus-visible { outline: 2px solid #D6B65E; outline-offset: 2px; }
   input, select, textarea, button { font: inherit; color: inherit; }
 }
 
 @layer components {
+  /* 蠟筆手繪框線 */
+  .sf-frame { position: relative; }
+  .sf-frame::before { content: ''; position: absolute; inset: -2px; pointer-events: none; border: 12px solid transparent; border-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2060%2060%27%3E%3Cpath%20d%3D%27M16%203.5C28%202.4%2033%204.2%2044%203c8%200%2013%205%2013%2013-.6%2011%20.7%2017%200%2028%20.2%208-5%2013-13%2012.6-11%20.9-17-.6-28%20.4-8%200-13-5-12.6-13C2.6%2033%204%2027%203%2016%203%208%208%203.5%2016%203.5z%27%20fill%3D%27none%27%20stroke%3D%27%238DB08F%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M17%205C29%204%2034%205.5%2043%204.6c7%20.4%2011.6%204.6%2012%2011.4.6%2011-.4%2018%20.3%2028-.6%207-4.6%2011-11.3%2011.2-11%20.5-18-.4-27%20.3-7-.3-11-4.4-11.4-11.5.6-11-.6-17%20.3-28C5.6%209%209.6%205.2%2017%205z%27%20fill%3D%27none%27%20stroke%3D%27%238DB08F%27%20stroke-width%3D%271.3%27%20opacity%3D%27.55%27/%3E%3C/svg%3E") 24 / 12px stretch; }
+  .sf-frame-sun::before { border-image-source: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2060%2060%27%3E%3Cpath%20d%3D%27M16%203.5C28%202.4%2033%204.2%2044%203c8%200%2013%205%2013%2013-.6%2011%20.7%2017%200%2028%20.2%208-5%2013-13%2012.6-11%20.9-17-.6-28%20.4-8%200-13-5-12.6-13C2.6%2033%204%2027%203%2016%203%208%208%203.5%2016%203.5z%27%20fill%3D%27none%27%20stroke%3D%27%23E9AD45%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M17%205C29%204%2034%205.5%2043%204.6c7%20.4%2011.6%204.6%2012%2011.4.6%2011-.4%2018%20.3%2028-.6%207-4.6%2011-11.3%2011.2-11%20.5-18-.4-27%20.3-7-.3-11-4.4-11.4-11.5.6-11-.6-17%20.3-28C5.6%209%209.6%205.2%2017%205z%27%20fill%3D%27none%27%20stroke%3D%27%23E9AD45%27%20stroke-width%3D%271.3%27%20opacity%3D%27.55%27/%3E%3C/svg%3E"); }
+  .sf-frame-berry::before { border-image-source: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2060%2060%27%3E%3Cpath%20d%3D%27M16%203.5C28%202.4%2033%204.2%2044%203c8%200%2013%205%2013%2013-.6%2011%20.7%2017%200%2028%20.2%208-5%2013-13%2012.6-11%20.9-17-.6-28%20.4-8%200-13-5-12.6-13C2.6%2033%204%2027%203%2016%203%208%208%203.5%2016%203.5z%27%20fill%3D%27none%27%20stroke%3D%27%23DE937A%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M17%205C29%204%2034%205.5%2043%204.6c7%20.4%2011.6%204.6%2012%2011.4.6%2011-.4%2018%20.3%2028-.6%207-4.6%2011-11.3%2011.2-11%20.5-18-.4-27%20.3-7-.3-11-4.4-11.4-11.5.6-11-.6-17%20.3-28C5.6%209%209.6%205.2%2017%205z%27%20fill%3D%27none%27%20stroke%3D%27%23DE937A%27%20stroke-width%3D%271.3%27%20opacity%3D%27.55%27/%3E%3C/svg%3E"); }
   .page { @apply mx-auto w-full max-w-[480px]; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full bg-sage px-5 py-2.5 font-medium text-white transition active:scale-[.98] disabled:opacity-50 disabled:active:scale-100; }
-  .btn-ghost { @apply btn border border-line bg-transparent text-ink; }
-  .btn-gold { @apply btn bg-gold text-[#4A3F2E]; }
-  .btn-danger { @apply btn bg-danger; }
+  /* 童趣：像糖果一樣「按得下去」的按鈕 */
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full bg-sage-deep px-5 py-2.5 font-medium text-white transition disabled:opacity-50; box-shadow: 0 3px 0 #3B5842; }
+  .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #3B5842; }
+  .btn-ghost { @apply btn border-2 border-line bg-paper-card text-ink; box-shadow: 0 3px 0 #E2D8C5; }
+  .btn-ghost:active:not(:disabled) { box-shadow: 0 1px 0 #E2D8C5; }
+  .btn-gold { @apply btn bg-sun text-[#4A3F2E]; box-shadow: 0 3px 0 #C9912C; }
+  .btn-danger { @apply btn bg-[#A4685B]; box-shadow: 0 3px 0 #7A4B40; }
   .btn-block { @apply w-full py-3 text-base; }
   .field { @apply flex flex-col gap-1 text-[13px] text-ink-soft; }
   .input { @apply w-full rounded-xl border border-line bg-paper-card px-3 py-2.5 text-[15px] text-ink outline-none focus:border-sage; }
-  .h-hand { @apply font-hand font-bold tracking-wide; }
+  .h-hand { @apply font-round font-normal tracking-wider; }
   .section { @apply border-b border-line py-5; }
-  .hint { @apply text-[12.5px] leading-relaxed text-ink-soft; }
-  .notice { @apply rounded-2xl bg-sage-mist px-4 py-3 text-[13.5px] leading-relaxed; }
+  .hint { @apply text-[13px] leading-relaxed text-ink-soft; }
+  .notice { @apply sf-frame rounded-[22px] bg-sage-mist px-4 py-3 text-[13.5px] leading-relaxed; }
   .error-box { @apply rounded-2xl bg-[#F4E4DF] px-4 py-3 text-[13.5px] leading-relaxed text-[#7A4B40]; }
 }
 
@@ -151,6 +165,7 @@
 /* 澆水：大水壺、大水滴、水花、樹跳一下、彩虹 */
 .sf-bigcan { animation: sf-bigcan-in .45s cubic-bezier(.2,.9,.3,1.3) both; }
 @keyframes sf-bigcan-in { from { translate: 60px 260px; scale: .4; opacity: 0 } to { translate: 0 0; scale: 1; opacity: 1 } }
+.sf-bigcan-shake { animation: sf-bigcan-shake .25s ease-in-out .5s infinite alternate; }
 .sf-bigcan-tilt { transform-origin: 40% 60%; animation: sf-bigcan-tilt .4s ease-out .3s both, sf-bigcan-shake .25s ease-in-out .7s infinite alternate; }
 @keyframes sf-bigcan-tilt { from { rotate: 0deg } to { rotate: -48deg } }
 @keyframes sf-bigcan-shake { from { translate: 0 0 } to { translate: -2px 2px } }
@@ -164,3 +179,18 @@
 @keyframes sf-jump { 0% { transform: scale(1, 1) } 20% { transform: scale(1.08, .9) } 45% { transform: translateY(-22px) scale(.96, 1.08) } 70% { transform: translateY(0) scale(1.04, .97) rotate(-1.5deg) } 85% { transform: rotate(1.5deg) } 100% { transform: none } }
 .sf-rainbow { opacity: 0; animation: sf-rainbow 6s ease-in-out forwards; }
 @keyframes sf-rainbow { 0% { opacity: 0; clip-path: inset(0 100% 0 0) } 20% { opacity: 1; clip-path: inset(0 0 0 0) } 80% { opacity: 1 } 100% { opacity: 0 } }
+
+/* 童趣：書本封面歪歪地擺、圓角卡片 */
+.sf-shelf > * { transition: transform .2s; }
+.sf-shelf > *:nth-child(3n+1) { transform: rotate(-1.6deg); }
+.sf-shelf > *:nth-child(3n+3) { transform: rotate(1.4deg); }
+.sf-shelf > *:active { transform: rotate(0) scale(.97); }
+.sf-tab-on .sf-tab-blob { background: #F9E3B4; }
+.sf-tab-blob { border-radius: 46% 54% 52% 48% / 55% 45% 55% 45%; transition: background .2s; }
+.sf-fab { box-shadow: 0 4px 0 #3B5842, 0 0 0 5px #F8F4EB !important; }
+.sf-fab:active { transform: translate(-50%, 3px) !important; box-shadow: 0 1px 0 #3B5842, 0 0 0 5px #F8F4EB !important; }
+.sf-stats > * { border-radius: 20px 24px 18px 22px !important; position: relative; }
+.sf-stats > :nth-child(4n+1) { background: #F9E6C4 !important; transform: rotate(-1deg); }
+.sf-stats > :nth-child(4n+2) { background: #E3EEDF !important; transform: rotate(.8deg); }
+.sf-stats > :nth-child(4n+3) { background: #E0EDF2 !important; transform: rotate(-.6deg); }
+.sf-stats > :nth-child(4n+4) { background: #F6E1DA !important; transform: rotate(1deg); }

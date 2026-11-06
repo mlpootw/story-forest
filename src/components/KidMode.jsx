@@ -1,3 +1,4 @@
+import { art } from '../lib/art'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
@@ -238,11 +239,7 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
               <button aria-label="水壺：點一下倒水給小樹喝" onClick={tapCan} onContextMenu={(e) => e.preventDefault()}
                 className={`relative grid h-28 w-28 touch-none select-none place-items-center rounded-full bg-[#E5EDE3] transition ${holding ? 'scale-95 bg-[#D6E4EA]' : pendingBooks.length ? 'sf-wiggle' : 'opacity-75'}`}>
-                <svg viewBox="0 0 64 64" className={`sf-can h-20 w-20 ${holding ? 'pour' : ''}`}>
-                  <path d="M14 26h28l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#8EAEBB" /><path d="M14 26h28l-.6 5H14.6z" fill="#7A9BA8" />
-                  <path d="M42 32l13-11 3 3-12 13z" fill="#8EAEBB" /><circle cx="57" cy="22" r="3.5" fill="#7A9BA8" />
-                  <path d="M20 26c0-8 4-12 8-12s8 4 8 12" fill="none" stroke="#7A9BA8" strokeWidth="3.5" strokeLinecap="round" />
-                </svg>
+                <img src={art(holding ? 'can-pour' : 'can')} alt="" draggable="false" className="sf-can h-20 w-24 object-contain" />
                 {pendingBooks.length > 0 && !holding && !burst && <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-paper-card px-2.5 text-[12px] font-bold text-sage-deep shadow">點我澆水</span>}
                 {pendingBooks.length > 0 && <span className="absolute right-1 top-1 grid h-8 min-w-8 place-items-center rounded-full bg-gold px-1.5 text-base font-bold text-[#4A3F2E] shadow-[0_0_0_3px_#F8F4EB]">{pendingBooks.length}</span>}
               </button>
@@ -355,7 +352,7 @@ function WeatherLayer({ weather }) {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
       <span className="sf-sun absolute left-[8%] top-3 text-5xl">☀️</span>
-      <span className="sf-cloud absolute top-8 text-3xl opacity-70">☁️</span>
+      <img src={art('cloud')} alt="" className="sf-cloud absolute top-8 w-20 opacity-90" />
     </div>
   )
 }
@@ -412,12 +409,7 @@ function BigPour() {
   return (
     <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
       <div className="sf-bigcan absolute right-[6%] top-[4%] w-28">
-        <svg viewBox="0 0 64 64" className="sf-bigcan-tilt h-28 w-28 drop-shadow-md">
-          <path d="M14 26h28l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#8EAEBB" /><path d="M14 26h28l-.6 5H14.6z" fill="#7A9BA8" />
-          <path d="M42 32l13-11 3 3-12 13z" fill="#8EAEBB" /><circle cx="57" cy="22" r="3.5" fill="#7A9BA8" />
-          <path d="M20 26c0-8 4-12 8-12s8 4 8 12" fill="none" stroke="#7A9BA8" strokeWidth="3.5" strokeLinecap="round" />
-          <circle cx="25" cy="42" r="3" fill="#fff" fillOpacity=".5" />
-        </svg>
+        <img src={art('can-pour')} alt="" className="sf-bigcan-shake h-28 w-28 object-contain drop-shadow-md" />
       </div>
       {/* 水柱＋很多水滴 */}
       {Array.from({ length: 34 }, (_, i) => (
@@ -439,7 +431,7 @@ function Rainbow() {
   const colors = ['#E7A1A1', '#EBC28F', '#E9DD9B', '#A9CFA4', '#9DC3D6', '#B4A7D3']
   return (
     <svg viewBox="0 0 200 100" className="sf-rainbow pointer-events-none absolute left-1/2 top-[6%] z-0 w-[95%] -translate-x-1/2" aria-hidden="true">
-      {colors.map((c, i) => <path key={c} d={`M ${10 + i * 7} 100 A ${90 - i * 7} ${90 - i * 7} 0 0 1 ${190 - i * 7} 100`} fill="none" stroke={c} strokeWidth="7" strokeOpacity=".75" />)}
+      <g filter="url(#sf-crayon)">{colors.map((c, i) => <path key={c} d={`M ${10 + i * 7} 100 A ${90 - i * 7} ${90 - i * 7} 0 0 1 ${190 - i * 7} 100`} fill="none" stroke={c} strokeWidth="7.5" strokeOpacity=".85" />)}</g>
     </svg>
   )
 }

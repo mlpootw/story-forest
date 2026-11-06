@@ -12,6 +12,8 @@ import { Sheet } from '../components/ui'
 import KidMode from '../components/KidMode'
 import { fruitReason, FRUIT_REASON_TEXT } from '../lib/fruit'
 import VisitorCard from '../components/VisitorCard'
+import { Squiggle } from '../components/Doodles'
+import { art } from '../lib/art'
 import { isEnglishBook, buildVisitors } from '../lib/visitors'
 
 export default function Garden({ child, family, refresh, onChanged, onAdd }) {
@@ -92,8 +94,11 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
     <div>
       <div className="mb-0.5 mt-1 flex items-center justify-between">
         <button className="h-10 w-10 rounded-full border border-line text-lg" aria-label="上個月" onClick={() => setYm(shiftMonth(ym, -1))}>‹</button>
-        <div className="text-center">
+        <div className="relative text-center">
+          <img src={art('star')} alt="" className="pointer-events-none absolute -left-10 -top-3 h-9 w-9 -rotate-12" />
+          <img src={art('cloud')} alt="" className="pointer-events-none absolute -right-16 -top-4 w-16" />
           <h2 className="h-hand text-[22px] leading-tight">{monthLabel(ym)}</h2>
+          <Squiggle className="mx-auto -mt-0.5 block h-2.5 w-28" color="#E89A84" />
           <p className="text-[12.5px] text-ink-soft">{child.nickname}{ageText(child) && ` · ${ageText(child)}`}</p>
         </div>
         <button className="h-10 w-10 rounded-full border border-line text-lg disabled:opacity-30" aria-label="下個月" disabled={isCurrent} onClick={() => setYm(shiftMonth(ym, 1))}>›</button>
@@ -129,13 +134,8 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
             <div className="notice mt-3 flex items-center gap-4">
               {/* 給孩子認的大按鈕：水壺＋自己的頭像，有水要澆時會搖一搖 */}
               <button onClick={() => setKid(true)} aria-label={`${child.nickname}的孩子模式`}
-                className={`relative grid h-[84px] w-[84px] shrink-0 place-items-center rounded-full bg-[#DCE8DF] shadow-[0_3px_0_#B9CDBE] active:translate-y-0.5 active:shadow-none ${waiting > 0 ? 'sf-wiggle' : ''}`}>
-                <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden="true">
-                  <path d="M14 26h28l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#8EAEBB" /><path d="M14 26h28l-.6 5H14.6z" fill="#7A9BA8" />
-                  <path d="M42 32l13-11 3 3-12 13z" fill="#8EAEBB" /><circle cx="57" cy="22" r="3.5" fill="#7A9BA8" />
-                  <path d="M20 26c0-8 4-12 8-12s8 4 8 12" fill="none" stroke="#7A9BA8" strokeWidth="3.5" strokeLinecap="round" />
-                  <path d="M24 40c2 3 8 3 10 0" stroke="#F8F4EB" strokeWidth="2.2" fill="none" strokeLinecap="round" /><circle cx="23" cy="36" r="1.8" fill="#F8F4EB" /><circle cx="35" cy="36" r="1.8" fill="#F8F4EB" />
-                </svg>
+                className={`relative grid h-[84px] w-[84px] shrink-0 place-items-center rounded-full bg-[#FBF0D9] shadow-[0_3px_0_#E5CF9E] active:translate-y-0.5 active:shadow-none ${waiting > 0 ? 'sf-wiggle' : ''}`}>
+                <img src={art('can')} alt="" className="h-14 w-[72px] object-contain" />
                 <span className="absolute -bottom-1 -left-1 grid h-8 w-8 place-items-center rounded-full font-hand text-sm font-bold text-white shadow-[0_0_0_3px_#EEF2EA]" style={{ background: child.avatar_color }}>{child.nickname.slice(-1)}</span>
                 {waiting > 0 && <span className="absolute -right-1 -top-1 grid h-7 min-w-7 place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-[#4A3F2E] shadow-[0_0_0_3px_#EEF2EA]">💧{waiting}</span>}
               </button>
@@ -145,16 +145,16 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
               </div>
             </div>
           )}
-          <p className="mt-1 text-center text-[13px] text-bark">{Number(ym.slice(5, 7))} 月的森林：{season.text}</p>
+          <p className="mt-1 flex items-center justify-center gap-1 text-center text-[13px] text-bark"><img src={art('snail')} alt="" className="h-8 w-auto shrink-0" />{Number(ym.slice(5, 7))} 月的森林：{season.text}</p>
 
           {visitors.length > 0 && (
-            <div className="mt-3 rounded-2xl bg-[#F3ECDA] px-4 py-3 text-center text-[13.5px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
+            <div className="sf-frame sf-frame-sun mt-3 rounded-[22px] bg-[#FBF0D9] px-4 py-3 text-center text-[14px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
           )}
           {fruits > 0 && (
             <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">重讀的書、爸媽標成最喜歡的書，還有森林偶爾送來的驚喜，都會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
           )}
 
-          <div className={`mt-4 grid gap-2 text-center ${flowers.length ? "grid-cols-4" : "grid-cols-3"}`}>
+          <div className={`sf-stats mt-4 grid gap-2 text-center ${flowers.length ? "grid-cols-4" : "grid-cols-3"}`}>
             {[['不同繪本', bookLeaves.length], ...(flowers.length ? [['雜誌', flowers.length]] : []), ['共讀次數', rows.length], ['共讀天數', new Set(rows.map((r) => r.read_on)).size]].map(([t, v]) => (
               <div key={t} className="rounded-2xl bg-paper-2 py-2.5"><b className="h-hand block text-2xl tabular-nums">{v}</b><span className="text-xs text-ink-soft">{t}</span></div>
             ))}

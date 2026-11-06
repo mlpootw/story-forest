@@ -1,3 +1,5 @@
+import { Heart } from '../components/Doodles'
+import { art } from '../lib/art'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
@@ -60,7 +62,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
 
   return (
     <div>
-      <div className="mt-2 flex items-center gap-2 rounded-full border border-line bg-paper-card px-4 py-2">
+      <div className="mt-2 flex items-center gap-2 rounded-full border-2 border-line bg-paper-card px-4 py-2">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7E70" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
         <input id="lib-search" type="search" className="min-w-0 flex-1 bg-transparent outline-none" placeholder="搜尋書名或作者" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
@@ -70,8 +72,9 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
         {hasUnknown && <Chip on={catF === 'none'} color="#C9BFAF" onClick={() => setCatF('none')}>待確認分類</Chip>}
       </div>
       <button onClick={() => (favs.length ? setShare({ ids: null }) : toast('還沒有 ♥ 最喜歡的書。點一本書，按「♡ 標為最喜歡」就能加入書單'))}
-        className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-[#F6E9EC] px-4 py-3 text-left active:scale-[.99]">
-        <span className="text-2xl">♥</span>
+        className="sf-frame sf-frame-berry relative mt-12 flex w-full items-center gap-3 rounded-[22px] bg-[#F9E8E6] px-4 py-3 text-left active:scale-[.99]">
+        <img src={art('bunny')} alt="" className="pointer-events-none absolute -top-[62px] right-20 h-16 w-auto" />
+        <Heart className="h-8 w-8 shrink-0" />
         <span className="min-w-0 flex-1"><b className="block text-[15px]">分享最愛書單</b>
           <span className="text-[12.5px] text-ink-soft">{favs.length ? `${favs.length} 本 ♥ 最喜歡的書，排成圖卡傳到 LINE` : '在書的資料頁按「♡ 標為最喜歡」，就能分享'}</span></span>
         <span className="rounded-full bg-[#06C755] px-3 py-1 text-xs font-bold text-white">LINE</span>
@@ -82,7 +85,7 @@ export default function Library({ child, family, refresh, onChanged, onAdd }) {
         ))}
       </div>
       {list.length ? (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-4">
+        <div className="sf-shelf grid grid-cols-3 gap-x-3 gap-y-4">
           {list.map((x) => (
             <button key={x.id} className="min-w-0 text-left" onClick={() => setOpenId(x.id)}>
               <Cover book={x.books} categoryId={x.category_id} size="sm" count={x.count > 1 ? `讀過 ${x.count} 次` : ''} />
