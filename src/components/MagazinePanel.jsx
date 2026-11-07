@@ -13,7 +13,7 @@ import { flowerOf } from '../lib/monthFlowers'
   - 第一次建立雜誌（名稱＋固定分類＋代表封面），之後可以修改
   - 每次記錄：選哪一年哪一月的那一期、可拍那期封面、有讀英文單元就勾（會招來森林訪客）
 */
-const PRESETS = ['小康軒學前版', '巧連智', '小牛頓', '小行星幼兒誌']
+const PRESETS = ['小康軒學前', '小牛頓高幼', '小行星幼兒誌']
 const SQL_HINT = '請先到 Supabase 執行雜誌的更新 SQL'
 const needSql = (e) => /kind|issue|has_english|schema cache/i.test(e?.message || '')
 
@@ -29,6 +29,7 @@ export default function MagazinePanel({ session, family, children, childId, setC
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [extraNote, setExtraNote] = useState('')
+  const [issueNo, setIssueNo] = useState('')
   const [issueCover, setIssueCover] = useState(null)
   const [english, setEnglish] = useState(false)
   const [busy, setBusy] = useState('')
@@ -70,7 +71,8 @@ export default function MagazinePanel({ session, family, children, childId, setC
     try {
       const cb = await ensureChildBook({ childId, bookId: sel.id, familyId: family.id, categoryId: catOfMag(sel) })
       const issue_cover_url = issueCover ? await uploadCover(family.id, issueCover.file) : null
-      const issue = `${year} 年 ${month} 月號`
+      const no = issueNo.replace(/\D/g, '').slice(0, 4)
+      const issue = `${year} 年 ${month} 月號${no ? `・第${no}期` : ''}`
       await addSession({
         childBookId: cb.id, childId, bookId: sel.id, familyId: family.id, readOn: date,
         note: extraNote.trim(),
@@ -81,6 +83,22 @@ export default function MagazinePanel({ session, family, children, childId, setC
       onSaved?.({ childId, date })
       onClose()
     } catch (e) { toast(needSql(e) ? SQL_HINT : zhError(e)) } finally { setBusy('') }
+  }
+
+  // 內建的幾本雜誌：點一下就建好，不用打字
+  async function addPreset(title) {
+    if (busy || autoMade.current === 'busy') return
+    autoMade.current = 'busy'
+    setBusy('new')
+    try {
+      const { data, error } = await supabase.from('books').insert({
+        title, kind: 'magazine', source: 'manual', owner_family_id: family.id, created_by: session.user.id,
+        cover_url: null, cover_source: 'none', subjects: [], authors: []
+      }).select('id').single()
+      if (error) throw error
+      for (const c of children) await ensureChildBook({ childId: c.id, bookId: data.id, familyId: family.id, categoryId: 'cognition' })
+      await load(data.id)
+    } catch (e) { toast(needSql(e) ? SQL_HINT : zhError(e)) } finally { setBusy(''); autoMade.current = true }
   }
 
   async function create() {
@@ -214,6 +232,13 @@ export default function MagazinePanel({ session, family, children, childId, setC
           </div>
         )
       })}
+      {PRESETS.some((t) => !mags.some((m) => m.title.startsWith(t))) && (
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.filter((t) => !mags.some((m) => m.title.startsWith(t))).map((t) => (
+            <button key={t} type="button" disabled={busy === 'new'} onClick={() => addPreset(t)} className="rounded-full border border-dashed border-sage px-3 py-1.5 text-[13px] text-sage-deep">＋ {t}</button>
+          ))}
+        </div>
+      )}
       <button className="self-start text-[13px] text-bark underline" onClick={() => { setForm({ title: '', cat: 'cognition', issn: '' }); setCover(null); setMode('create') }}>＋ 新增另一本雜誌</button>
 
       {sel && (
@@ -228,6 +253,9 @@ export default function MagazinePanel({ session, family, children, childId, setC
               </select>
             </div>
           </div>
+          <label className="field">第幾期（選填，例如 167）
+            <input id="mag-no" className="input" inputMode="numeric" maxLength={4} value={issueNo} onChange={(e) => setIssueNo(e.target.value)} placeholder="封面上的期數" />
+          </label>
           <div className="flex items-center gap-3">
             {issueCover && <img src={issueCover.preview} alt="這期封面" className="w-12 rounded shadow" />}
             <button type="button" className="btn-ghost px-4 py-2 text-sm" onClick={() => setCam('issue')}>📷 {issueCover ? '重拍這期封面' : '拍這一期的封面（建議拍，才分得出是哪一期）'}</button>

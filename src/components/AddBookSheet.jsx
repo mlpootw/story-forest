@@ -9,6 +9,7 @@ import { isEnglishBook } from '../lib/visitors'
 import Cover from './Cover'
 import CoverCamera from './CoverCamera'
 import MagazinePanel from './MagazinePanel'
+import MomShelf from './MomShelf'
 
 // 掃描套件較大，打開掃描時才下載
 const Scanner = lazy(() => import('./Scanner'))
@@ -21,6 +22,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const { family, children } = data
   const [tab, setTab] = useState('scan')
   const [loans, setLoans] = useState(null)
+  const [momBooks, setMomBooks] = useState([])
   const [loanCam, setLoanCam] = useState(null) // 正在幫哪一本借閱中的書拍封面
   const [state, setState] = useState({ busy: false, msg: '', error: '' })
   const [isbnInput, setIsbnInput] = useState('')
@@ -53,15 +55,16 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     if (!open) return
     let alive = true
     ;(async () => {
-      const { data: rows, error } = await supabase.from('book_loans').select('due_on, books(id, title, authors, cover_url, isbn13, description, language, source, kind)').eq('family_id', family.id).order('due_on')
+      const { data: rows, error } = await supabase.from('book_loans').select('due_on, audience, books(id, title, authors, cover_url, isbn13, description, language, source, kind)').eq('family_id', family.id).order('due_on')
       if (!alive) return
-      if (error || !rows?.length) { setLoans([]); return }
-      const ids = rows.map((r) => r.books?.id).filter(Boolean)
+      if (error || !rows?.length) { setLoans([]); setMomBooks([]); return }
+      const ids = rows.filter((r) => r.audience !== 'mom').map((r) => r.books?.id).filter(Boolean)
       const { data: cbs } = await supabase.from('child_books').select('book_id, category_id, cover_url').eq('child_id', childId).in('book_id', ids)
       const m = new Map((cbs || []).map((c) => [c.book_id, c]))
-      const list = rows.filter((r) => r.books).map((r) => { const c = m.get(r.books.id); return { due: r.due_on, book: c?.cover_url ? { ...r.books, cover_url: c.cover_url } : r.books, cat: c?.category_id ?? null } })
+      const list = rows.filter((r) => r.books && r.audience !== 'mom').map((r) => { const c = m.get(r.books.id); return { due: r.due_on, book: c?.cover_url ? { ...r.books, cover_url: c.cover_url } : r.books, cat: c?.category_id ?? null } })
       setLoans(list)
-      setTab((t) => (t === 'scan' && list.length ? 'loans' : t))
+      setMomBooks(rows.filter((r) => r.books && r.audience === 'mom').map((r) => ({ id: r.books.id, title: r.books.title, due: r.due_on })))
+      setTab((t) => (t === 'scan' && (list.length || rows.some((r) => r.audience === 'mom')) ? 'loans' : t))
     })()
     return () => { alive = false }
   }, [open, family.id, childId])
@@ -219,9 +222,9 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
           </div>
 
           {tab === 'loans' && (
-            loans?.length ? (
+            loans?.length || momBooks.length ? (
               <>
-                <p className="mb-2 text-[13px] text-ink-soft">點一下今天念的書，就可以記下來 📚</p>
+                {loans?.length ? <p className="mb-2 text-[13px] text-ink-soft">點一下今天念的書，就可以記下來 📚</p> : <div className="py-4 text-center text-sm text-ink-soft">彬彬目前沒有借閱中的書。</div>}
                 <div className="grid grid-cols-3 gap-x-3 gap-y-4">
                   {loans.map((l) => {
                     const n = daysLeft(l.due)
@@ -239,6 +242,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
                     )
                   })}
                 </div>
+                <MomShelf family={family} session={session} books={momBooks} />
               </>
             ) : <div className="py-8 text-center text-sm text-ink-soft">{loans ? '目前沒有借閱中的書。' : '讀取中…'}</div>
           )}
