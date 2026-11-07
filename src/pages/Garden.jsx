@@ -58,7 +58,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       // 雜誌：有讀英文單元就算英文（招來訪客），封面用最新一期拍的
       if (l.mag) {
         const withCover = l.sessions.filter((s) => s.issue_cover_url).sort((a, b) => (a.read_on < b.read_on ? 1 : -1))[0]
-        l = { ...l, en: l.sessions.some((s) => s.has_english), book: withCover ? { ...l.book, cover_url: withCover.issue_cover_url } : l.book }
+        l = { ...l, baseBook: l.book, en: l.sessions.some((s) => s.has_english), book: withCover ? { ...l.book, cover_url: withCover.issue_cover_url } : l.book }
       }
       const moods = l.sessions.map((s) => s.mood).filter(Boolean)
       const base = { ...l, count: l.sessions.length, first: l.sessions[0].read_on, topMood: topMood(moods) }
@@ -188,7 +188,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
                   // 雜誌：每一次（每一期）分開一本一本列出來
                   ? [...l.sessions].reverse().map((s) => (
                     <button key={s.id} className="w-[76px] shrink-0 text-left" onClick={() => setOpenId(l.id)}>
-                      <Cover book={s.issue_cover_url ? { ...l.book, cover_url: s.issue_cover_url } : l.book} categoryId={l.cat} size="xs" />
+                      <Cover book={s.issue_cover_url ? { ...l.book, cover_url: s.issue_cover_url } : (l.baseBook || l.book)} categoryId={l.cat} size="xs" />
                       <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">🌼 {l.book.title}</span>
                       {s.issue && <span className="block text-[11px] leading-tight text-ink-soft">{s.issue.replace(/^\d+ 年 /, '')}</span>}
                     </button>

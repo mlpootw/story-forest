@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
 import { toast } from '../lib/toast'
@@ -32,11 +32,27 @@ export default function MagazinePanel({ session, family, children, childId, setC
   const [issueCover, setIssueCover] = useState(null)
   const [english, setEnglish] = useState(false)
   const [busy, setBusy] = useState('')
+  const autoMade = useRef(false)
 
   async function load(selectId) {
     const { data, error } = await supabase.from('books').select('id, title, cover_url, issn, child_books(id, child_id, category_id, cover_url)')
       .eq('owner_family_id', family.id).eq('kind', 'magazine').order('created_at')
     if (error) { setMags([]); if (needSql(error)) toast(SQL_HINT); return }
+    // 還沒有任何雜誌：直接內建「小康軒學前版」，不用打字，只要選年月、拍封面
+    if (!data.length && !presetIssn && !autoMade.current) {
+      autoMade.current = true
+      let made = null
+      try {
+        const { data: nb, error: e1 } = await supabase.from('books').insert({
+          title: PRESETS[0], kind: 'magazine', source: 'manual', owner_family_id: family.id, created_by: session.user.id,
+          cover_url: null, cover_source: 'none', subjects: [], authors: []
+        }).select('id').single()
+        if (e1) throw e1
+        made = nb
+        for (const c of children) await ensureChildBook({ childId: c.id, bookId: nb.id, familyId: family.id, categoryId: 'cognition' })
+        return load(nb.id)
+      } catch { if (made) return load(made.id) /* 失敗就走原本的建立畫面 */ }
+    }
     setMags(data)
     setSelId((cur) => selectId || cur || data[0]?.id || null)
     if (!data.length && !presetIssn) setMode('create')
@@ -214,7 +230,7 @@ export default function MagazinePanel({ session, family, children, childId, setC
           </div>
           <div className="flex items-center gap-3">
             {issueCover && <img src={issueCover.preview} alt="這期封面" className="w-12 rounded shadow" />}
-            <button type="button" className="btn-ghost px-4 py-2 text-sm" onClick={() => setCam('issue')}>📷 {issueCover ? '重拍這期封面' : '拍這一期的封面（選填）'}</button>
+            <button type="button" className="btn-ghost px-4 py-2 text-sm" onClick={() => setCam('issue')}>📷 {issueCover ? '重拍這期封面' : '拍這一期的封面（建議拍，才分得出是哪一期）'}</button>
           </div>
           <button type="button" onClick={() => setEnglish(!english)} aria-pressed={english}
             className={`flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left ${english ? 'border-[#8EAEBB] bg-[#EAF2F1]' : 'border-line'}`}>

@@ -21,6 +21,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
   const { family, children } = data
   const [tab, setTab] = useState('scan')
   const [loans, setLoans] = useState(null)
+  const [loanCam, setLoanCam] = useState(null) // 正在幫哪一本借閱中的書拍封面
   const [state, setState] = useState({ busy: false, msg: '', error: '' })
   const [isbnInput, setIsbnInput] = useState('')
   const [query, setQuery] = useState('')
@@ -141,6 +142,22 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     setCoverInfo({ preview })
   }
 
+  async function shootLoan(file) {
+    const b = loanCam
+    setLoanCam(null)
+    if (!b) return
+    try {
+      const url = await uploadCover(family.id, file)
+      const cb = await ensureChildBook({ childId, bookId: b.id, familyId: family.id })
+      const { error } = await supabase.from('child_books').update({ cover_url: url }).eq('id', cb.id)
+      if (error) throw error
+      setLoans((ls) => ls.map((l) => (l.book.id === b.id ? { ...l, book: { ...l.book, cover_url: url } } : l)))
+      toast('封面換好了 📷')
+    } catch (e) {
+      toast(e.message === 'image_too_large' ? '封面照片太大，請換一張' : zhError(e))
+    }
+  }
+
   function manualNext() {
     if (!manual.title.trim()) return fail('請填寫書名。')
     let isbn13 = null
@@ -209,11 +226,16 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
                   {loans.map((l) => {
                     const n = daysLeft(l.due)
                     return (
-                      <button key={l.book.id} className="text-left" onClick={() => { setCat(undefined); setCand({ book: l.book, from: '借閱中' }) }}>
+                      <div key={l.book.id} className="relative">
+                       <button className="block w-full text-left" onClick={() => { setCat(undefined); setCand({ book: l.book, from: '借閱中' }) }}>
                         <Cover book={l.book} categoryId={l.cat} size="sm" />
                         <b className="mt-1 line-clamp-2 block text-[12.5px] font-medium leading-snug">{l.book.title}</b>
                         <span className={`text-[11.5px] ${n < 0 ? 'text-[#B5533C]' : n <= 3 ? 'text-[#B8863B]' : 'text-ink-soft'}`}>{n < 0 ? '已逾期' : `${mdOf(l.due)} 到期`}</span>
-                      </button>
+                       </button>
+                       {!l.book.cover_url && (
+                         <button aria-label={`幫《${l.book.title}》拍封面`} className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-full bg-paper/95 text-[15px] shadow" onClick={() => setLoanCam(l.book)}>📷</button>
+                       )}
+                      </div>
                     )
                   })}
                 </div>
@@ -357,6 +379,7 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
         </div>
       )}
       {cam && <CoverCamera onDone={onShot} onClose={() => setCam(false)} />}
+      {loanCam && <CoverCamera onDone={shootLoan} onClose={() => setLoanCam(null)} />}
     </Sheet>
   )
 }
