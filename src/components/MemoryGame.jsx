@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Cover from './Cover'
 
 /*
   封面翻翻樂
   - 用這個月已經長出葉子的書做卡片（2～4 組）
   - 沒有分數、沒有計時；全部配對完成就放煙火
-  - 讀一本書玩一輪：今天每澆水長出／點亮一本書，就多一輪（記在這台裝置）
+  - 輪數：今天每讀一本書（澆完水）可以玩 3 輪，所有遊戲共用（由遊戲選單管理）
 */
-const ymdLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 function shuffle(a) {
   const b = [...a]
@@ -15,13 +14,7 @@ function shuffle(a) {
   return b
 }
 
-export default function MemoryGame({ child, leaves, rows, onClose }) {
-  const today = ymdLocal()
-  const key = `sf-memory-${child.id}-${today}`
-  // 今天澆水的書（不同本）＝今天可以玩的輪數
-  const earned = useMemo(() => new Set(rows.filter((r) => r.growth_shown_at && ymdLocal(new Date(r.growth_shown_at)) === today).map((r) => r.child_book_id)).size, [rows, today])
-  const [played, setPlayed] = useState(() => { try { return Number(localStorage.getItem(key)) || 0 } catch { return 0 } })
-  const left = Math.max(0, earned - played)
+export default function MemoryGame({ leaves, left, onUseRound, onClose }) {
 
   const [cards, setCards] = useState(null)
   const [open, setOpen] = useState([])
@@ -32,9 +25,7 @@ export default function MemoryGame({ child, leaves, rows, onClose }) {
     const pool = shuffle(leaves).slice(0, Math.min(4, leaves.length))
     setCards(shuffle(pool.flatMap((l) => [{ uid: l.id + 'a', id: l.id, leaf: l }, { uid: l.id + 'b', id: l.id, leaf: l }])))
     setOpen([]); setDone([])
-    const n = played + 1
-    setPlayed(n)
-    try { localStorage.setItem(key, String(n)) } catch { /* 無痕模式 */ }
+    onUseRound()
   }
 
   function flip(c) {
@@ -62,7 +53,7 @@ export default function MemoryGame({ child, leaves, rows, onClose }) {
       <div className="mx-auto flex h-full w-full max-w-[480px] flex-col">
         <div className="flex items-center justify-between">
           <h2 className="h-hand text-2xl">🃏 封面翻翻樂</h2>
-          <button className="grid h-12 w-12 place-items-center rounded-full bg-paper text-2xl shadow" onClick={onClose} aria-label="回到小樹">🌳</button>
+          <button className="grid h-12 w-12 place-items-center rounded-full bg-paper text-2xl shadow" onClick={onClose} aria-label="回到遊戲選單">🎮</button>
         </div>
 
         {!cards ? (
@@ -76,8 +67,7 @@ export default function MemoryGame({ child, leaves, rows, onClose }) {
             ) : left === 0 ? (
               <>
                 <div className="text-7xl">🌙</div>
-                <p className="h-hand text-2xl leading-snug">{earned === 0 ? <>今天讀一本書、<br />澆完水就能玩囉！</> : <>今天的翻翻樂玩完了<br />再讀一本書，就能再玩一輪</>}</p>
-                <p className="text-sm text-ink-soft">每讀一本書、澆水長出葉子，就多一輪</p>
+                <p className="h-hand text-2xl leading-snug">今天的遊戲玩完了<br />再讀一本書，就能再玩 3 輪</p>
               </>
             ) : (
               <>
@@ -107,8 +97,8 @@ export default function MemoryGame({ child, leaves, rows, onClose }) {
                 <p className="h-hand text-2xl">🎉 全部找到了！</p>
                 <p className="mt-1 text-sm text-ink-soft">還記得這些故事在講什麼嗎？跟爸爸媽媽說說看</p>
                 <div className="mt-3 flex justify-center gap-3">
-                  <button className="btn-ghost px-6 py-3" onClick={onClose}>回到小樹 🌳</button>
-                  {earned - played > 0 && <button className="btn px-6 py-3" onClick={start}>再玩一輪</button>}
+                  <button className="btn-ghost px-6 py-3" onClick={onClose}>回到選單 🎮</button>
+                  {left > 0 && <button className="btn px-6 py-3" onClick={start}>再玩一輪</button>}
                 </div>
                 <div className="pointer-events-none fixed inset-0" aria-hidden="true">
                   {Array.from({ length: 14 }, (_, i) => <span key={i} className="sf-confetti" style={{ left: `${(i * 7.3) % 96}%`, animationDelay: `${(i % 6) * 0.15}s`, background: ['#C88F99', '#D6B65E', '#83A48A', '#8EAEBB', '#AD9DBD'][i % 5] }} />)}

@@ -6,9 +6,10 @@ import { CATEGORIES, catOf, ymd } from '../lib/books'
 import { ensureChildBook, addSession, uploadCover } from '../lib/records'
 import Cover from './Cover'
 import CoverCamera from './CoverCamera'
+import { flowerOf } from '../lib/monthFlowers'
 
 /*
-  雜誌：整本雜誌在樹下是一朵花，讀越多次開得越大
+  雜誌：每讀一次，樹下的花圃就開一朵花（每個月開當季的花）
   - 第一次建立雜誌（名稱＋固定分類＋代表封面），之後可以修改
   - 每次記錄：選哪一年哪一月的那一期、可拍那期封面、有讀英文單元就勾（會招來森林訪客）
 */
@@ -54,13 +55,13 @@ export default function MagazinePanel({ session, family, children, childId, setC
       const cb = await ensureChildBook({ childId, bookId: sel.id, familyId: family.id, categoryId: catOfMag(sel) })
       const issue_cover_url = issueCover ? await uploadCover(family.id, issueCover.file) : null
       const issue = `${year} 年 ${month} 月號`
-      const { newLeaf } = await addSession({
+      await addSession({
         childBookId: cb.id, childId, bookId: sel.id, familyId: family.id, readOn: date,
         note: extraNote.trim(),
         extra: { issue, issue_cover_url, has_english: english }
       })
       const name = children.find((c) => c.id === childId)?.nickname
-      toast(`記好了！${sel.title} ${issue}${english ? '，有讀英文 🐰' : ''}　${newLeaf ? `樹下冒出花苞，等${name}來澆水 🌼` : '等澆水讓花長大 🌼'}`)
+      toast(`記好了！${sel.title} ${issue}${english ? '，有讀英文 🐰' : ''}　樹下冒出花苞，等${name}來澆水 🌼`)
       onSaved?.({ childId, date })
       onClose()
     } catch (e) { toast(needSql(e) ? SQL_HINT : zhError(e)) } finally { setBusy('') }
@@ -135,7 +136,7 @@ export default function MagazinePanel({ session, family, children, childId, setC
         {presetIssn && !editing && <div className="notice">掃到一本新的雜誌！取個名字，之後再掃這本雜誌就會自動認出來。</div>}
         {!mags.length && !editing && (
           <div className="text-center"><div className="text-4xl">🌼</div>
-            <p className="hint">雜誌會變成樹下的一朵花。不管讀哪一期都算同一朵，讀越多次開得越大。</p></div>
+            <p className="hint">每讀一次雜誌，樹下的花圃就會開一朵花，每個月開當季的花（這個月是{flowerOf(ymd().slice(0, 7)).name}）。讀越多，花圃越滿。</p></div>
         )}
         <label className="field">雜誌名稱<input id="mag-title" className="input" value={form.title} placeholder="例如：小康軒學前版" onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
         {!editing && (

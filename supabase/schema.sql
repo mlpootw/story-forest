@@ -652,4 +652,67 @@ $$;
 revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;
 
+-- =====================================================================
+-- 9. 英文書森林訪客
+-- =====================================================================
+
+-- 書籍語言（從 Google Books / Open Library 帶入，例如 en、zh-TW）
+alter table public.books add column if not exists language text;
+
+-- 家長可以手動標記「這是英文書」（null = 依書籍語言自動判斷）
+alter table public.child_books add column if not exists is_english boolean;
+
+-- =====================================================================
+-- 10. 自己拍的封面（只影響自己家庭）
+-- =====================================================================
+
+alter table public.child_books add column if not exists cover_url text;
+
+-- =====================================================================
+-- 11. 雜誌（樹下的花）
+-- =====================================================================
+
+-- 書的種類：book 繪本／magazine 雜誌
+alter table public.books add column if not exists kind text not null default 'book';
+alter table public.books drop constraint if exists books_kind_check;
+alter table public.books add constraint books_kind_check check (kind in ('book', 'magazine'));
+
+-- 雜誌的 ISSN（條碼 977 開頭），掃描時用來認出是哪本雜誌
+alter table public.books add column if not exists issn text;
+create index if not exists books_issn_idx on public.books(issn);
+
 -- 完成！
+
+-- =====================================================================
+-- 12. 雜誌的每一期：年月、那期封面、這次有讀英文單元（update-phase5d.sql）
+-- =====================================================================
+alter table public.reading_sessions add column if not exists issue text;
+alter table public.reading_sessions drop constraint if exists reading_sessions_issue_len;
+alter table public.reading_sessions add constraint reading_sessions_issue_len check (char_length(issue) <= 40);
+alter table public.reading_sessions add column if not exists issue_cover_url text;
+alter table public.reading_sessions add column if not exists has_english boolean not null default false;
+
+-- =====================================================================
+-- 13. 小樹的聲音（update-phase5e.sql）
+-- =====================================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('voices', 'voices', false, 1048576, array['audio/*'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists voices_select on storage.objects;
+drop policy if exists voices_insert on storage.objects;
+drop policy if exists voices_update on storage.objects;
+drop policy if exists voices_delete on storage.objects;
+
+create policy voices_select on storage.objects for select to authenticated
+  using (bucket_id = 'voices' and public.cover_folder_is_mine(name));
+create policy voices_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'voices' and public.cover_folder_is_mine(name));
+create policy voices_update on storage.objects for update to authenticated
+  using (bucket_id = 'voices' and public.cover_folder_is_mine(name))
+  with check (bucket_id = 'voices' and public.cover_folder_is_mine(name));
+create policy voices_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'voices' and public.cover_folder_is_mine(name));
