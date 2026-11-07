@@ -1,3 +1,7 @@
+import { TREE_SETS } from '../lib/treeArt'
+import { getHarvested } from '../lib/harvest'
+import Snow from '../components/Snow'
+import { flowerOf } from '../lib/monthFlowers'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { zhError } from '../lib/errors'
@@ -66,14 +70,20 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
   // 雜誌是樹下的花，不算樹上的葉子
   const bookLeaves = useMemo(() => leaves.filter((l) => !l.mag), [leaves])
   const flowers = useMemo(() => leaves.filter((l) => l.mag), [leaves])
+  // 雜誌花圃：每讀一次雜誌就是一朵花（還沒澆水的是花苞）
+  const bedFlowers = useMemo(() => (rows || []).filter((r) => r.books?.kind === 'magazine')
+    .sort((a, b) => (a.read_on < b.read_on ? -1 : a.read_on > b.read_on ? 1 : a.created_at < b.created_at ? -1 : 1))
+    .map((r) => ({ id: r.id, bookId: r.child_book_id, cat: r.child_books?.category_id, pending: !r.growth_shown_at, en: !!r.has_english })), [rows])
   // 還沒在孩子模式澆水的書，在這裡也只是花苞，要等孩子澆水才長成葉子
   const pendingIds = useMemo(() => leaves.filter((l) => !l.sessions.some((s) => s.growth_shown_at)).map((l) => l.id), [leaves])
   const grownLeaves = useMemo(() => bookLeaves.filter((l) => !pendingIds.includes(l.id)), [bookLeaves, pendingIds])
   const isCurrent = ym === thisMonth
-  const speciesId = choice || SPECIES_LIST[hashStr(child.id + ym) % SPECIES_LIST.length].id
+  const isXmas = ym.slice(5, 7) === '12' // 12 月自動種聖誕樹，不用選
+  const speciesId = isXmas ? 'xmas' : choice || SPECIES_LIST[hashStr(child.id + ym) % SPECIES_LIST.length].id
   const sp = SPECIES[speciesId]
-  const canChange = isCurrent && (!choice || leaves.every((l) => l.sessions.every((x) => !x.growth_shown_at)))
-  const needsPick = isCurrent && choice === null
+  const canChange = !isXmas && isCurrent && (!choice || leaves.every((l) => l.sessions.every((x) => !x.growth_shown_at)))
+  const needsPick = !isXmas && isCurrent && choice === null
+  const harvested = getHarvested(child.id, ym) // 這台裝置上已收成的芭樂（只是畫面，總數不變）
   const stage = stageOf(grownLeaves.length)
   const season = SEASONS[Number(ym.slice(5, 7))]
   const fruits = leaves.filter((l) => l.fruit && !pendingIds.includes(l.id)).length
@@ -110,7 +120,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       {rows && (
         <>
           <p className="mt-1 text-center text-[13px] text-ink-soft">
-            {needsPick ? '還沒選樹' : sp.name}{grownLeaves.length ? ` · ${grownLeaves.length} 片故事葉` : ''}{flowers.length ? ` · ${flowers.length} 朵雜誌花` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
+            {needsPick ? '還沒選樹' : sp.name}{grownLeaves.length ? ` · ${grownLeaves.length} ${TREE_SETS[speciesId] ? `${TREE_SETS[speciesId].unit}${TREE_SETS[speciesId].fruitName}` : '片故事葉'}` : ''}{harvested.length ? ` · 籃子裡 ${harvested.length} 顆` : ''}{bedFlowers.length ? ` · ${bedFlowers.filter((f) => !f.pending).length} 朵${flowerOf(ym).name}` : ''} · <b className="h-hand text-[15px] text-sage-deep">{STAGES[stage]}</b>
             {canChange && choice && <button className="ml-2 text-[12px] underline" onClick={() => setPicker(true)}>換一棵</button>}
           </p>
 
@@ -122,10 +132,11 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
             </div>
           ) : (
             <div className="relative">
+              {ym.slice(5, 7) === '12' && <Snow />}
               {bookLeaves.length > 18 && (
                 <button className="absolute right-2 top-2 z-10 rounded-full border border-line bg-paper/90 px-3 py-1 text-[12.5px]" onClick={() => setZoom(!zoom)}>{zoom ? '縮小' : '放大看葉子'}</button>
               )}
-              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} pendingIds={pendingIds} zoom={zoom} onPick={setOpenId}
+              <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={bedFlowers} pendingIds={pendingIds} harvestedIds={harvested} zoom={zoom} onPick={setOpenId}
                 visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
             </div>
           )}
@@ -150,12 +161,12 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
           {visitors.length > 0 && (
             <div className="sf-frame sf-frame-sun mt-3 rounded-[22px] bg-[#FBF0D9] px-4 py-3 text-center text-[14px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
           )}
-          {fruits > 0 && (
+          {fruits > 0 && !TREE_SETS[speciesId] && (
             <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">重讀的書、爸媽標成最喜歡的書，還有森林偶爾送來的驚喜，都會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>
           )}
 
-          <div className={`sf-stats mt-4 grid gap-2 text-center ${flowers.length ? "grid-cols-4" : "grid-cols-3"}`}>
-            {[['不同繪本', bookLeaves.length], ...(flowers.length ? [['雜誌', flowers.length]] : []), ['共讀次數', rows.length], ['共讀天數', new Set(rows.map((r) => r.read_on)).size]].map(([t, v]) => (
+          <div className={`sf-stats mt-4 grid gap-2 text-center ${bedFlowers.length ? "grid-cols-4" : "grid-cols-3"}`}>
+            {[['不同繪本', bookLeaves.length], ...(bedFlowers.length ? [['雜誌', bedFlowers.length]] : []), ['共讀次數', rows.length], ['共讀天數', new Set(rows.map((r) => r.read_on)).size]].map(([t, v]) => (
               <div key={t} className="rounded-2xl bg-paper-2 py-2.5"><b className="h-hand block text-2xl tabular-nums">{v}</b><span className="text-xs text-ink-soft">{t}</span></div>
             ))}
           </div>
@@ -173,12 +184,21 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
               </div>
               <h3 className="h-hand mb-2 mt-6 text-lg">這個月讀的書{flowers.length > 0 && <span className="ml-2 text-xs font-normal text-ink-soft">🌼 是雜誌</span>}</h3>
               <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
-                {[...leaves].reverse().map((l) => (
-                  <button key={l.id} className="w-[76px] shrink-0 text-left" onClick={() => setOpenId(l.id)}>
-                    <Cover book={l.book} categoryId={l.cat} size="xs" count={l.count > 1 ? `×${l.count}` : ''} />
-                    <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">{l.mag && '🌼 '}{l.book.title}</span>
-                  </button>
-                ))}
+                {[...leaves].reverse().flatMap((l) => (l.mag
+                  // 雜誌：每一次（每一期）分開一本一本列出來
+                  ? [...l.sessions].reverse().map((s) => (
+                    <button key={s.id} className="w-[76px] shrink-0 text-left" onClick={() => setOpenId(l.id)}>
+                      <Cover book={s.issue_cover_url ? { ...l.book, cover_url: s.issue_cover_url } : l.book} categoryId={l.cat} size="xs" />
+                      <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">🌼 {l.book.title}</span>
+                      {s.issue && <span className="block text-[11px] leading-tight text-ink-soft">{s.issue.replace(/^\d+ 年 /, '')}</span>}
+                    </button>
+                  ))
+                  : [(
+                    <button key={l.id} className="w-[76px] shrink-0 text-left" onClick={() => setOpenId(l.id)}>
+                      <Cover book={l.book} categoryId={l.cat} size="xs" count={l.count > 1 ? `×${l.count}` : ''} />
+                      <span className="mt-1 line-clamp-2 block text-[12px] leading-snug">{l.book.title}</span>
+                    </button>
+                  )]))}
               </div>
             </>
           ) : !needsPick && (
@@ -206,7 +226,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
       </Sheet>
 
       {kid && rows && (
-        <KidMode child={child} ym={ym} speciesId={speciesId} choice={choice} rows={rows} setRows={setRows}
+        <KidMode child={child} ym={ym} speciesId={speciesId} choice={isXmas ? 'xmas' : choice} rows={rows} setRows={setRows}
           onPickTree={pick} onExit={() => { setKid(false); onChanged() }} />
       )}
       <VisitorCard visitor={guest} onClose={() => setGuest(null)} />

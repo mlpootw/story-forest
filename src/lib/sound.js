@@ -84,8 +84,9 @@ export function unlockAudio() { ac() }
 export const VOICE_LINES = [
   { key: 'ask', text: '幫我澆水', when: '一進兒童模式、還有書在等澆水時' },
   { key: 'leaf', text: '長出新葉子了！', when: '每次長出新葉子、葉子變亮時' },
-  { key: 'flower', text: '開出雜誌花了！', when: '雜誌花長出來、長大時（沒錄就用上一句）' },
+  { key: 'flower', text: '花園開花了！', when: '每讀一次雜誌、花圃開一朵花時（沒錄就用上一句）' },
   { key: 'full', text: '謝謝你，我喝飽了', when: '全部澆完的時候' },
+  { key: 'harvest', text: '芭樂收成囉！', when: '芭樂摘完、放進籃子的時候' },
   { key: 'unlock', text: '解鎖新遊戲了！', when: '讀到 50／100／150 次解鎖新遊戲時' }
 ]
 const voiceCache = new Map() // key -> blob URL
@@ -122,4 +123,25 @@ export function playVoice(key, fallback) {
 }
 export function playUrl(url) {
   try { playing?.pause(); playing = new Audio(url); playing.play().catch(() => {}) } catch { /* */ }
+}
+
+// 數數時的小音效：越數越高
+export function tick(i = 0) {
+  const c = ac()
+  if (!c) return
+  const t = c.currentTime
+  const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = 523 * Math.pow(2, Math.min(i, 12) / 12)
+  const g = c.createGain()
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.22, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25)
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.3)
+}
+// 答錯：輕輕的「咚」，不刺耳
+export function boop() {
+  const c = ac()
+  if (!c) return
+  const t = c.currentTime
+  const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(330, t); o.frequency.exponentialRampToValueAtTime(220, t + 0.2)
+  const g = c.createGain()
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3)
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.35)
 }

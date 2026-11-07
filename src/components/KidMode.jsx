@@ -11,7 +11,13 @@ import { isEnglishBook, buildVisitors } from '../lib/visitors'
 import Cover from './Cover'
 import { Avatar } from './ui'
 import { fruitReason } from '../lib/fruit'
-import MemoryGame from './MemoryGame'
+import GameMenu from './GameMenu'
+import HarvestGame from './HarvestGame'
+import Snow from './Snow'
+import { HARVEST_AT, getHarvested, addHarvested } from '../lib/harvest'
+import { totalWatered, wateredUnitsToday, playedToday, addRound, newlyUnlocked, ROUNDS_PER_BOOK } from '../lib/games'
+import { flowerOf, flowerHead } from '../lib/monthFlowers'
+import { TREE_SETS } from '../lib/treeArt'
 import { pourStart, pourStop, chime, unlockAudio, loadVoices, playVoice } from '../lib/sound'
 
 /*
@@ -31,9 +37,17 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
   const [weather, setWeather] = useState('day') // day | rain | night
   const [reaction, setReaction] = useState(null) // { m, key }
   const [game, setGame] = useState(false)
+  const xmas = ym.slice(5, 7) === '12' // 12 月整個月都下雪
+  const [harvest, setHarvest] = useState(false) // 芭樂收成遊戲
+  const [harvested, setHarvested] = useState(() => getHarvested(child.id, ym))
+  const [total, setTotal] = useState(0) // 從開始到現在澆過水的共讀次數（解鎖遊戲用）
+  const [played, setPlayed] = useState(() => playedToday(child.id))
+  const [unlocked, setUnlocked] = useState(null) // 剛解鎖的遊戲
+  useEffect(() => { totalWatered(supabase, child.id).then(setTotal) }, [child.id])
   const [holding, setHolding] = useState(false) // 正在倒水
   const [burst, setBurst] = useState(null) // 畫面中間的大動畫 { leaf, kind, key }
   const [jump, setJump] = useState(0) // 樹喝到水跳一下
+  const [newGuest, setNewGuest] = useState(null) // 剛被英文書叫來的訪客，一定要出現在樹下
   const [rainbow, setRainbow] = useState(0) // 偶爾出現的彩虹
   const voiceTimers = useRef([])
   const [fill, setFill] = useState(0) // 0～1 小樹喝了多少水
@@ -63,18 +77,23 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
   }, [rows])
 
   const bookLeaves = useMemo(() => leaves.filter((l) => !l.mag), [leaves])
-  const flowers = useMemo(() => leaves.filter((l) => l.mag), [leaves])
+  // 雜誌花圃：每讀一次雜誌就是一朵花（還沒澆水的是花苞）
+  const bedFlowers = useMemo(() => rows.filter((r) => r.books?.kind === 'magazine')
+    .sort((a, b) => (a.read_on < b.read_on ? -1 : a.read_on > b.read_on ? 1 : a.created_at < b.created_at ? -1 : 1))
+    .map((r) => ({ id: r.id, bookId: r.child_book_id, cat: r.child_books?.category_id, pending: !r.growth_shown_at, en: !!r.has_english })), [rows])
   const visitors = useMemo(() => buildVisitors(leaves.filter((l) => l.shown), child.id, ym, speciesId, hashStr), [leaves, child.id, ym, speciesId])
   const [guest, setGuest] = useState(null)
   const pendingIds = useMemo(() => leaves.filter((l) => !l.shown).map((l) => l.id), [leaves])
-  // 等澆水的書（一本一次），先讀的先澆
-  const pendingBooks = useMemo(() => leaves
-    .filter((l) => l.sessions.some((s) => !s.growth_shown_at))
-    .sort((a, b) => {
-      const fa = a.sessions.filter((s) => !s.growth_shown_at).map((s) => s.read_on).sort()[0]
-      const fb = b.sessions.filter((s) => !s.growth_shown_at).map((s) => s.read_on).sort()[0]
-      return fa < fb ? -1 : fa > fb ? 1 : 0
-    }), [leaves])
+  // 熟了、還沒收成的芭樂（繪本一本一顆）；滿 20 顆就可以收成
+  const readyIds = useMemo(() => (TREE_SETS[speciesId] && !TREE_SETS[speciesId].noHarvest ? bookLeaves.filter((l) => l.shown && !harvested.includes(l.id)).map((l) => l.id) : []), [bookLeaves, harvested, speciesId])
+  const canHarvest = readyIds.length >= HARVEST_AT
+  // 等澆水的：繪本一本一次；雜誌每讀一次就是一朵花，所以每一次分開澆。先讀的先澆
+  const pendingBooks = useMemo(() => leaves.flatMap((l) => {
+    const ps = l.sessions.filter((s) => !s.growth_shown_at)
+    if (!ps.length) return []
+    if (l.mag) return ps.map((s) => ({ ...l, unitIds: [s.id], unitEn: !!s.has_english, first: s.read_on }))
+    return [{ ...l, unitIds: ps.map((s) => s.id), first: ps.map((s) => s.read_on).sort()[0] }]
+  }).sort((a, b) => (a.first < b.first ? -1 : a.first > b.first ? 1 : 0)), [leaves])
   const askWater = () => playVoice('ask')
   // 載入家長錄的聲音；一進來，小樹就說「幫我澆水」（沒錄就不出聲）
   useEffect(() => {
@@ -101,32 +120,39 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
   async function water(leaf) {
     if (busy || !leaf) return
     setBusy(true)
-    const ids = leaf.sessions.filter((s) => !s.growth_shown_at).map((s) => s.id)
-    const growLeaves = leaf.shown ? [] : [leaf.id]
-    const flashLeaves = leaf.shown ? [leaf.id] : []
+    const ids = leaf.unitIds
+    // 雜誌：開出一朵新的花（用這一次的紀錄編號）
+    const growLeaves = leaf.mag ? ids : leaf.shown ? [] : [leaf.id]
+    const flashLeaves = !leaf.mag && leaf.shown ? [leaf.id] : []
     const now = new Date().toISOString()
     const { error } = await supabase.from('reading_sessions').update({ growth_shown_at: now }).in('id', ids).is('growth_shown_at', null)
     setBusy(false)
     if (error) { say(zhError(error)); return }
     setRows((rs) => rs.map((r) => (ids.includes(r.id) ? { ...r, growth_shown_at: now } : r)))
+    // 累積次數：剛好跨過門檻就解鎖新遊戲（等長葉子動畫結束再出現）
+    const g = newlyUnlocked(total, total + ids.length)
+    setTotal((t) => t + ids.length)
+    if (g) later(() => { setUnlocked(g); playVoice('unlock'); chime() }, prefersCalm() ? 1200 : 3600)
     chime()
     navigator.vibrate?.(60)
     setJump(Date.now())
+    if (leaf.en && (!leaf.shown || leaf.unitEn)) setNewGuest(leaf.id)
     if (!prefersCalm() && Math.random() < 0.4) setRainbow(Date.now()) // 隨機彩虹
-    const popLeaves = leaf.fruit ? [leaf.id] : []
+    const popLeaves = !leaf.mag && leaf.fruit ? [leaf.id] : []
     const kind = leaf.mag ? 'flower' : leaf.shown ? 'shine' : 'leaf'
     if (prefersCalm()) setAnim({ grow: growLeaves, flash: flashLeaves, pop: popLeaves })
     else {
       // 先在畫面中間大大地長出來，再飛回樹上
-      setBurst({ leaf, kind, fruit: popLeaves.length > 0, key: Date.now() })
+      setBurst({ leaf, kind, fruit: popLeaves.length > 0, ym, key: Date.now() })
       setTimeout(() => { setBurst(null); setAnim({ grow: growLeaves, flash: flashLeaves, pop: popLeaves }) }, 2700)
     }
     const sp = SPECIES[speciesId]
     const left = pendingBooks.length - 1
-    say(leaf.mag ? (leaf.sessions.some((s) => !s.growth_shown_at && s.has_english) ? '讀了英文！森林訪客來了 🐰' : leaf.shown ? '樹下的雜誌花又長大了 🌼' : '樹下冒出一朵雜誌花 🌼')
+    say(leaf.mag ? (leaf.unitEn && !leaf.sessions.some((s) => s.growth_shown_at && s.has_english) ? '讀了英文！森林訪客來了 🐰' : `花園開了一朵${flowerOf(ym).name} 🌸`)
       : leaf.en && !leaf.shown ? '森林訪客來了！點點牠 🐰'
         : popLeaves.length ? `驚喜！${sp.verb ? '開出' : '結出'}${sp.fruitName}了！`
-          : leaf.shown ? '葉子亮起來了 ✨' : '長出一片新葉子！')
+          : TREE_SETS[speciesId] ? (leaf.shown ? (TREE_SETS[speciesId].shine || `${TREE_SETS[speciesId].fruitName}變熟了 ✨`) : (TREE_SETS[speciesId].grow || `結出一顆${TREE_SETS[speciesId].fruitName}！`))
+            : leaf.shown ? '葉子亮起來了 ✨' : '長出一片新葉子！')
     const calm = prefersCalm()
     later(() => (leaf.mag ? playVoice('flower', 'leaf') : playVoice('leaf')), calm ? 200 : 1300)
     later(() => playVoice(left > 0 ? 'ask' : 'full'), calm ? 1800 : 3100)
@@ -182,13 +208,13 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
         {choice && (
           <div className="mt-2 flex items-center justify-between">
             <div className="flex gap-1.5 rounded-full bg-paper-2 p-1" role="group" aria-label="換天氣">
-              {[['day', '☀️', '晴天'], ['rain', '🌧️', '下雨'], ['night', '🌙', '晚上']].map(([k, e, t]) => (
+              {[['day', '☀️', '晴天'], ['rain', xmas ? '❄️' : '🌧️', xmas ? '大雪' : '下雨'], ['night', '🌙', '晚上']].map(([k, e, t]) => (
                 <button key={k} aria-label={t} aria-pressed={weather === k} onClick={() => setWeather(k)}
                   className={`grid h-11 w-11 place-items-center rounded-full text-2xl transition active:scale-90 ${weather === k ? 'bg-paper-card shadow' : 'opacity-60'}`}>{e}</button>
               ))}
             </div>
-            <button onClick={() => setGame(true)} className="flex items-center gap-1.5 rounded-full bg-[#F3ECDA] py-2 pl-3 pr-4 font-hand text-lg font-bold shadow-[0_3px_0_#E2D3B0] active:translate-y-0.5 active:shadow-none" aria-label="翻翻樂小遊戲">
-              <span className="text-2xl">🃏</span>翻翻樂
+            <button onClick={() => { setPlayed(playedToday(child.id)); setGame(true) }} className="flex items-center gap-1.5 rounded-full bg-[#F3ECDA] py-2 pl-3 pr-4 font-hand text-lg font-bold shadow-[0_3px_0_#E2D3B0] active:translate-y-0.5 active:shadow-none" aria-label="小遊戲">
+              <span className="text-2xl">🎮</span>小遊戲
             </button>
           </div>
         )}
@@ -209,19 +235,24 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
           <>
             <div style={{ '--sf-fill': fill }} onClick={(e) => { if (e.target === e.currentTarget && pendingBooks.length) askWater() }}
               className={`sf-sky relative mt-2 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[28px] transition-colors duration-700 sf-sky-${weather} ${fill > 0 ? 'is-drinking' : ''} ${holding ? 'is-pouring' : ''}`}>
-              <WeatherLayer weather={weather} />
+              <WeatherLayer weather={xmas && weather === 'rain' ? 'day' : weather} />
+              {xmas && <Snow dense={weather === 'rain'} />}
               {rainbow > 0 && <Rainbow key={rainbow} />}
               <div className="relative w-full transition-transform duration-1000 ease-out" style={{ transform: `scale(${treeScale})`, transformOrigin: '50% 92%' }}>
+               {holding && !prefersCalm() && <BigPour part="water" />}
                <div key={jump} className={jump ? 'sf-jump' : ''}>
-                <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={flowers} className="mx-0"
-                  pendingIds={pendingIds} growIds={anim.grow} flashIds={anim.flash} popIds={anim.pop}
+                <ReadingTree childId={child.id} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={bedFlowers} className="mx-0"
+                  pendingIds={pendingIds} harvestedIds={harvested} growIds={anim.grow} flashIds={anim.flash} popIds={anim.pop}
                   onPick={(id) => setBig(leaves.find((l) => l.id === id))}
-                  visitors={visitors} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
+                  visitors={visitors} mustShow={newGuest} onVisitor={(id) => setGuest(visitors.find((v) => v.id === id))} />
                </div>
               </div>
-              {holding && !prefersCalm() && <BigPour />}
+              {holding && !prefersCalm() && <BigPour part="can" />}
+              {canHarvest && !burst && !holding && (
+                <button className="sf-wiggle absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-gold px-4 py-2 font-hand text-lg font-bold text-[#4A3F2E] shadow-[0_4px_0_#B8963E] active:translate-y-0.5 active:shadow-none" onClick={() => setHarvest(true)}>🧺 芭樂熟了！來收成</button>
+              )}
               {reaction && <Reaction key={reaction.key} m={reaction.m} />}
-              {burst && <GrowBurst key={burst.key} {...burst} sp={SPECIES[speciesId]} />}
+              {burst && <GrowBurst key={burst.key} {...burst} sp={SPECIES[speciesId]} set={TREE_SETS[speciesId]} />}
               {/* 喝水進度：一顆慢慢裝滿的水滴 */}
               {(fill > 0 || holding) && pendingBooks.length > 0 && prefersCalm() && (
                 <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-center" aria-hidden="true">
@@ -273,7 +304,26 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
       </div>
 
       <VisitorCard visitor={guest} onClose={() => setGuest(null)} />
-      {game && <MemoryGame child={child} leaves={leaves.filter((l) => l.shown)} rows={rows} onClose={() => setGame(false)} />}
+      {harvest && (
+        <HarvestGame child={child} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={bedFlowers} pendingIds={pendingIds} harvestedIds={harvested} targetIds={readyIds}
+          onClose={() => setHarvest(false)} onDone={(ids) => { setHarvested(addHarvested(child.id, ym, ids)); setHarvest(false) }} />
+      )}
+      {game && <GameMenu child={child} leaves={leaves.filter((l) => l.shown)} total={total} earned={wateredUnitsToday(rows) * ROUNDS_PER_BOOK} played={played}
+        onUseRound={() => setPlayed(addRound(child.id))} onClose={() => setGame(false)} />}
+      {unlocked && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#2E3A52]/60 p-6" role="dialog" aria-label="解鎖新遊戲" onClick={() => setUnlocked(null)}>
+          <div className="sf-unlock w-full max-w-[320px] rounded-[32px] bg-paper px-6 pb-6 pt-8 text-center shadow-xl">
+            <div className="text-7xl">{unlocked.icon}</div>
+            <p className="mt-2 text-sm font-bold text-bark">🔓 讀了 {unlocked.unlock} 次故事！</p>
+            <p className="h-hand mt-1 text-3xl">解鎖新遊戲了！</p>
+            <p className="h-hand mt-1 text-2xl text-sage-deep">{unlocked.name}</p>
+            <button className="btn mt-5 w-full py-3 text-lg" onClick={(e) => { e.stopPropagation(); setUnlocked(null); setPlayed(playedToday(child.id)); setGame(true) }}>去玩玩看 🎮</button>
+          </div>
+          <div className="pointer-events-none fixed inset-0" aria-hidden="true">
+            {Array.from({ length: 16 }, (_, i) => <span key={i} className="sf-confetti" style={{ left: `${(i * 6.3) % 96}%`, animationDelay: `${(i % 6) * 0.15}s`, background: ['#C88F99', '#D6B65E', '#83A48A', '#8EAEBB', '#AD9DBD'][i % 5] }} />)}
+          </div>
+        </div>
+      )}
       {big && (
         <button className="fixed inset-0 z-[55] grid place-items-center bg-[#3E3832]/55 p-8" onClick={() => setBig(null)} aria-label="關閉封面">
           <div className="w-[min(64vw,260px)]"><Cover book={big.book} categoryId={big.cat} size="lg" /></div>
@@ -374,19 +424,21 @@ function Reaction({ m }) {
 }
 
 // 澆完水：畫面中間大大的動畫（封面放大 → 變成葉子／花 → 飛回樹上）
-function GrowBurst({ leaf, kind, fruit, sp }) {
+function GrowBurst({ leaf, kind, fruit, sp, ym, set }) {
+  const MF = flowerOf(ym)
   const color = catOf(leaf.cat).color
-  const label = kind === 'flower' ? (leaf.shown ? '雜誌花長大了！' : '開出一朵雜誌花！') : kind === 'shine' ? '葉子變亮了！' : '長出新葉子！'
+  const label = kind === 'flower' ? `開出一朵${MF.name}！` : set ? (kind === 'shine' ? (set.shine || `${set.fruitName}變熟了！`) : (set.grow || `結出一顆${set.fruitName}！`)) : kind === 'shine' ? '葉子變亮了！' : '長出新葉子！'
   return (
     <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-hidden="true">
       <div className="sf-burst-glow absolute h-72 w-72 rounded-full" style={{ background: `radial-gradient(circle, ${color}66 0%, ${color}00 70%)` }} />
       <div className="sf-burst-cover absolute w-36"><Cover book={leaf.book} categoryId={leaf.cat} size="sm" /></div>
       <div className="sf-burst-leaf absolute">
-        {kind === 'flower' ? (
-          <svg viewBox="-50 -50 100 100" className="h-44 w-44">
-            {Array.from({ length: 8 }, (_, i) => <ellipse key={i} cx="0" cy="-24" rx="13" ry="24" fill={color} transform={`rotate(${i * 45})`} />)}
-            <circle r="15" fill="#F3DE9A" /><circle r="15" fill="none" stroke="#D6B65E" strokeWidth="3" />
-          </svg>
+        {kind === 'flower' && MF.art ? (
+          <img src={art(MF.art.open)} alt="" className="h-48 w-40 object-contain" />
+        ) : kind === 'flower' ? (
+          <svg viewBox="-50 -50 100 100" className="h-44 w-44" dangerouslySetInnerHTML={{ __html: flowerHead(MF.kind, 34, MF.palette[hashStr(leaf.id + 'c') % MF.palette.length]) }} />
+        ) : set ? (
+          <img src={art(kind === 'shine' ? set.ripe : set.fruit)} alt="" className={`h-44 w-44 object-contain ${kind === 'shine' ? 'sf-burst-shine' : ''}`} />
         ) : (
           <svg viewBox="-50 -50 100 100" className={`h-44 w-44 ${kind === 'shine' ? 'sf-burst-shine' : ''}`}>
             <path d="M0 44 C-36 20 -40 -22 0 -46 C40 -22 36 20 0 44 Z" fill={color} />
@@ -394,7 +446,7 @@ function GrowBurst({ leaf, kind, fruit, sp }) {
             <path d="M0 40 L0 -38 M0 6 L-15 -8 M0 6 L15 -8 M0 -14 L-11 -26 M0 -14 L11 -26" stroke="#fff" strokeOpacity=".75" strokeWidth="3" strokeLinecap="round" fill="none" />
           </svg>
         )}
-        {fruit && <svg viewBox="-14 -14 28 28" className="sf-burst-fruit absolute -right-4 -top-2 h-16 w-16" dangerouslySetInnerHTML={{ __html: sp.fruit(0, 0) }} />}
+        {fruit && !set && <svg viewBox="-14 -14 28 28" className="sf-burst-fruit absolute -right-4 -top-2 h-16 w-16" dangerouslySetInnerHTML={{ __html: sp.fruit(0, 0) }} />}
       </div>
       {Array.from({ length: 10 }, (_, i) => (
         <span key={i} className="sf-burst-spark absolute text-2xl" style={{ '--a': `${i * 36}deg`, animationDelay: `${0.85 + (i % 3) * 0.06}s` }}>✨</span>
@@ -405,22 +457,27 @@ function GrowBurst({ leaf, kind, fruit, sp }) {
 }
 
 // 倒水：大水壺飛到樹上方，倒出一大片水，地上濺起水花
-function BigPour() {
-  return (
+function BigPour({ part }) {
+  if (part === 'can') return (
     <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
       <div className="sf-bigcan absolute right-[6%] top-[4%] w-28">
         <img src={art('can-pour')} alt="" className="sf-bigcan-shake h-28 w-28 object-contain drop-shadow-md" />
       </div>
-      {/* 水柱＋很多水滴 */}
+    </div>
+  )
+  // 水滴和水花：放在樹的框框裡，才會剛好落在樹下的地上
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+      {/* 很多水滴 */}
       {Array.from({ length: 34 }, (_, i) => (
         <span key={i} className="sf-bigdrop absolute" style={{ left: `${34 + ((i * 17) % 30)}%`, animationDelay: `${0.35 + (i % 12) * 0.07}s`, animationDuration: `${0.7 + (i % 4) * 0.1}s`, width: 6 + (i % 3) * 3, height: 10 + (i % 3) * 4 }} />
       ))}
       {/* 地上的水花 */}
       {Array.from({ length: 3 }, (_, i) => (
-        <span key={'r' + i} className="sf-splash absolute left-1/2 top-[86%] h-6 w-40 -translate-x-1/2 rounded-[50%] border-[3px] border-[#8EAEBB]" style={{ animationDelay: `${0.6 + i * 0.35}s` }} />
+        <span key={'r' + i} className="sf-splash absolute left-1/2 top-[90%] h-6 w-40 -translate-x-1/2 rounded-[50%] border-[3px] border-[#8EAEBB]" style={{ animationDelay: `${0.6 + i * 0.35}s` }} />
       ))}
       {Array.from({ length: 10 }, (_, i) => (
-        <span key={'s' + i} className="sf-splashdrop absolute top-[85%] h-2.5 w-2.5 rounded-full bg-[#8EAEBB]" style={{ left: `${38 + i * 2.6}%`, '--dx': `${(i - 4.5) * 9}px`, animationDelay: `${0.7 + (i % 4) * 0.2}s` }} />
+        <span key={'s' + i} className="sf-splashdrop absolute top-[89%] h-2.5 w-2.5 rounded-full bg-[#8EAEBB]" style={{ left: `${38 + i * 2.6}%`, '--dx': `${(i - 4.5) * 9}px`, animationDelay: `${0.7 + (i % 4) * 0.2}s` }} />
       ))}
     </div>
   )

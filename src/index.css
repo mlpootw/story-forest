@@ -169,8 +169,8 @@
 .sf-bigcan-tilt { transform-origin: 40% 60%; animation: sf-bigcan-tilt .4s ease-out .3s both, sf-bigcan-shake .25s ease-in-out .7s infinite alternate; }
 @keyframes sf-bigcan-tilt { from { rotate: 0deg } to { rotate: -48deg } }
 @keyframes sf-bigcan-shake { from { translate: 0 0 } to { translate: -2px 2px } }
-.sf-bigdrop { top: 14%; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #7FA7BA; opacity: 0; animation-name: sf-bigdrop; animation-timing-function: ease-in; animation-iteration-count: infinite; animation-fill-mode: both; }
-@keyframes sf-bigdrop { 0% { opacity: 0; transform: translateY(0) } 10% { opacity: .95 } 90% { opacity: .9 } 100% { opacity: 0; transform: translateY(330px) } }
+.sf-bigdrop { top: -12%; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #7FA7BA; opacity: 0; animation-name: sf-bigdrop; animation-timing-function: ease-in; animation-iteration-count: infinite; animation-fill-mode: both; }
+@keyframes sf-bigdrop { 0% { opacity: 0; top: -12% } 10% { opacity: .95 } 90% { opacity: .9 } 100% { opacity: 0; top: 88% } }
 .sf-splash { opacity: 0; animation: sf-splash .9s ease-out infinite; }
 @keyframes sf-splash { 0% { opacity: .9; scale: .2 } 100% { opacity: 0; scale: 1.3 } }
 .sf-splashdrop { opacity: 0; animation: sf-splashdrop .7s ease-out infinite; }
@@ -194,3 +194,42 @@
 .sf-stats > :nth-child(4n+2) { background: #E3EEDF !important; transform: rotate(.8deg); }
 .sf-stats > :nth-child(4n+3) { background: #E0EDF2 !important; transform: rotate(-.6deg); }
 .sf-stats > :nth-child(4n+4) { background: #F6E1DA !important; transform: rotate(1deg); }
+
+/* 書本加減法 */
+.sf-flyaway { animation: sf-flyaway 1.3s ease-in forwards; }
+@keyframes sf-flyaway { 0% { transform: none; opacity: 1 } 25% { transform: translateY(-10px) rotate(-6deg) } 100% { transform: translate(40px, -160px) rotate(18deg) scale(.6); opacity: 0; visibility: hidden } }
+.sf-wings { animation: sf-wing .25s ease-in-out infinite alternate; }
+@keyframes sf-wing { to { scale: 1.25 .8 } }
+.sf-lit { transform: translateY(-4px) scale(1.08); filter: drop-shadow(0 0 6px #F3DE9A); }
+.sf-countnum { animation: sf-pop .3s cubic-bezier(.2,.9,.3,1.5) both; }
+.sf-qin { animation: sf-qin .45s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes sf-qin { from { opacity: 0; translate: 0 18px } to { opacity: 1; translate: 0 0 } }
+.sf-shake { animation: sf-shake .45s ease-in-out; }
+@keyframes sf-shake { 20%, 60% { translate: -6px 0 } 40%, 80% { translate: 6px 0 } }
+.sf-unlock { animation: sf-unlock .8s cubic-bezier(.2,.9,.3,1.4) both; }
+@keyframes sf-unlock { 0% { scale: .2; opacity: 0; rotate: -20deg } 100% { scale: 1; opacity: 1; rotate: 0deg } }
+
+/* 加減法的小動物：輕輕跳、跑走 */
+.sf-critter { animation: sf-critter 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes sf-critter { 0%, 70%, 100% { translate: 0 0 } 80% { translate: 0 -5px } 90% { translate: 0 0 } }
+.sf-runaway { animation: sf-runaway 1.2s ease-in forwards; }
+@keyframes sf-runaway { 0% { transform: none; opacity: 1 } 20% { transform: translateY(-6px) scaleX(-1) } 100% { transform: translateX(240px) scaleX(-1); opacity: 0; visibility: hidden } }
+
+/* 彈珠台：掉進格子的書跳出來 */
+.sf-pinpop { animation: sf-pinpop 1.6s ease-out forwards; }
+@keyframes sf-pinpop { 0% { opacity: 0; scale: .3; translate: 0 120px } 25% { opacity: 1; scale: 1.08; translate: 0 0 } 35% { scale: 1 } 80% { opacity: 1 } 100% { opacity: 0; translate: 0 -20px } }
+
+.sf-scorepop { animation: sf-scorepop 1.1s ease-out forwards; }
+@keyframes sf-scorepop { 0% { opacity: 0; translate: 0 6px; scale: .6 } 20% { opacity: 1; scale: 1.2 } 100% { opacity: 0; translate: 0 -40px; scale: 1 } }
+
+/* 畫的果樹：花長成果實 */
+.sf-tree .sf-artbud .sf-in { animation: sf-artbud 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes sf-artbud { 0%, 100% { scale: 1 } 50% { scale: 1.12 } }
+.sf-tree .sf-artgrow .sf-in { transform-box: view-box; transform-origin: 0 0; animation: sf-artgrow 1.4s cubic-bezier(.2,.9,.3,1.35) both; }
+@keyframes sf-artgrow { 0% { transform: scale(0) rotate(-25deg); opacity: 0 } 45% { transform: scale(1.12) rotate(10deg); opacity: 1 } 70% { transform: scale(.96) rotate(-5deg) } 100% { transform: none } }
+.sf-tree .sf-fruitimg { filter: drop-shadow(0 1.5px 1.5px rgba(70, 50, 30, .35)) drop-shadow(0 0 2px rgba(255, 250, 230, .9)); }
+
+/* 12 月：下雪 */
+.sf-flake { position: absolute; top: -4%; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(142, 174, 196, .5), 0 0 4px rgba(255, 255, 255, .9); animation: sf-snowfall linear infinite; }
+.sf-flake-still { animation: none; }
+@keyframes sf-snowfall { 0% { transform: translate(0, 0) } 50% { transform: translate(var(--sw), 300px) } 100% { transform: translate(0, 620px) } }

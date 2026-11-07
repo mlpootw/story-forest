@@ -37,6 +37,7 @@ export const SPECIES = {
     fruit: (x, y) => `<g transform="translate(${x},${y})"><path d="M0,-9 L0,-4" stroke="#7E8A4F" stroke-width="1.2"/>${[-4, 0, 4].map((dx, i) => `<path d="M${dx},-4 C${dx - 3},0 ${dx - 2},6 ${dx + 2},8 C${dx + 0.5},4 ${dx + 0.5},0 ${dx + 1.6},-4Z" fill="${i === 1 ? '#F2D35B' : '#E9C850'}" stroke="#B89A3A" stroke-width=".5"/>`).join('')}</g>`
   }
 }
+SPECIES.xmas = { ...SPECIES.guava, id: 'xmas', name: '聖誕樹', fruitName: '裝飾', line: '12 月的聖誕樹，每讀一本書掛一個裝飾' } // 12 月自動種，不在選樹清單
 export const SPECIES_LIST = ['guava', 'mango', 'pomelo', 'waxapple', 'sakura', 'banana'].map((k) => SPECIES[k])
 
 /* ---------- 每月的花與小動物（台灣） ---------- */
@@ -52,7 +53,7 @@ export const SEASONS = {
   9: { flower: 'goldenrain', animal: 'redfly', text: '台灣欒樹開黃花，紅蜻蜓來了' },
   10: { flower: 'goldenrain_red', animal: 'squirrel', text: '欒樹的果實變紅了，松鼠忙著找食物' },
   11: { flower: 'fallen', animal: 'sparrow', text: '樹下有落葉，小麻雀來散步' },
-  12: { flower: 'maple', animal: 'sparrow', text: '楓葉紅了，小麻雀躲在樹下取暖' }
+  12: { flower: 'snow', animal: 'sparrow', text: '下雪了，小麻雀躲在樹下取暖' }
 }
 
 const petals = (n, r, color, rx = 2.4, ry = 3.2) =>
