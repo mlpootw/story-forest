@@ -13,11 +13,14 @@ import MagazinePanel from './MagazinePanel'
 // 掃描套件較大，打開掃描時才下載
 const Scanner = lazy(() => import('./Scanner'))
 
-const TABS = [['scan', '掃描'], ['search', '搜尋書名'], ['manual', '手動新增'], ['magazine', '🌼 雜誌']]
+const TABS = [['loans', '借閱中'], ['scan', '掃描'], ['search', '搜尋'], ['manual', '手動'], ['magazine', '🌼 雜誌']]
+const mdOf = (d) => { const [, m, day] = String(d).split('-'); return `${+m}/${+day}` }
+const daysLeft = (d) => Math.round((new Date(d + 'T00:00:00') - new Date(ymd() + 'T00:00:00')) / 864e5)
 
 export default function AddBookSheet({ open, onClose, session, data, childId: initialChild, presetDate, onSaved }) {
   const { family, children } = data
   const [tab, setTab] = useState('scan')
+  const [loans, setLoans] = useState(null)
   const [state, setState] = useState({ busy: false, msg: '', error: '' })
   const [isbnInput, setIsbnInput] = useState('')
   const [query, setQuery] = useState('')
@@ -39,10 +42,28 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
 
   useEffect(() => {
     if (!open) return
-    setTab('scan'); setState({ busy: false, msg: '', error: '' }); setIsbnInput(''); setQuery(''); setResults(null)
+    setTab(loans?.length ? 'loans' : 'scan'); setState({ busy: false, msg: '', error: '' }); setIsbnInput(''); setQuery(''); setResults(null)
     setCand(null); setOwned(null); setCat(undefined); setDate(presetDate || ymd()); setChildId(initialChild); setNote('')
     setManual({ title: '', author: '', isbn: '' }); setCoverFile(null); setCoverInfo(null); setNotFound(null); setMagIssn(null)
   }, [open, presetDate, initialChild])
+
+  // 借閱中的書（由借閱清單同步進來）
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    ;(async () => {
+      const { data: rows, error } = await supabase.from('book_loans').select('due_on, books(id, title, authors, cover_url, isbn13, description, language, source, kind)').eq('family_id', family.id).order('due_on')
+      if (!alive) return
+      if (error || !rows?.length) { setLoans([]); return }
+      const ids = rows.map((r) => r.books?.id).filter(Boolean)
+      const { data: cbs } = await supabase.from('child_books').select('book_id, category_id, cover_url').eq('child_id', childId).in('book_id', ids)
+      const m = new Map((cbs || []).map((c) => [c.book_id, c]))
+      const list = rows.filter((r) => r.books).map((r) => { const c = m.get(r.books.id); return { due: r.due_on, book: c?.cover_url ? { ...r.books, cover_url: c.cover_url } : r.books, cat: c?.category_id ?? null } })
+      setLoans(list)
+      setTab((t) => (t === 'scan' && list.length ? 'loans' : t))
+    })()
+    return () => { alive = false }
+  }, [open, family.id, childId])
 
   // 這本書是否已在這個孩子的書房
   useEffect(() => {
@@ -173,12 +194,32 @@ export default function AddBookSheet({ open, onClose, session, data, childId: in
     <Sheet open={open} onClose={onClose} title={cand ? '確認是這本書嗎？' : '新增繪本'}>
       {!cand ? (
         <>
-          <div className="mb-4 grid grid-cols-4 gap-1.5">
+          <div className="mb-4 grid gap-1.5 grid-cols-5">
             {TABS.map(([k, t]) => (
               <button key={k} onClick={() => { setTab(k); setState({ busy: false, msg: '', error: '' }) }}
-                className={`rounded-xl border px-1 py-2.5 text-[13.5px] ${tab === k ? 'border-sage bg-sage-mist font-bold text-sage-deep' : 'border-line'}`}>{t}</button>
+                className={`rounded-xl border px-0.5 py-2.5 text-[12.5px] ${tab === k ? 'border-sage bg-sage-mist font-bold text-sage-deep' : 'border-line'}`}>{t}</button>
             ))}
           </div>
+
+          {tab === 'loans' && (
+            loans?.length ? (
+              <>
+                <p className="mb-2 text-[13px] text-ink-soft">點一下今天念的書，就可以記下來 📚</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-4">
+                  {loans.map((l) => {
+                    const n = daysLeft(l.due)
+                    return (
+                      <button key={l.book.id} className="text-left" onClick={() => { setCat(undefined); setCand({ book: l.book, from: '借閱中' }) }}>
+                        <Cover book={l.book} categoryId={l.cat} size="sm" />
+                        <b className="mt-1 line-clamp-2 block text-[12.5px] font-medium leading-snug">{l.book.title}</b>
+                        <span className={`text-[11.5px] ${n < 0 ? 'text-[#B5533C]' : n <= 3 ? 'text-[#B8863B]' : 'text-ink-soft'}`}>{n < 0 ? '已逾期' : `${mdOf(l.due)} 到期`}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            ) : <div className="py-8 text-center text-sm text-ink-soft">{loans ? '目前沒有借閱中的書。' : '讀取中…'}</div>
+          )}
 
           {tab === 'scan' && (
             <>
