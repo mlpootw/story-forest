@@ -50,7 +50,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
 /* 閱讀樹 */
@@ -88,6 +88,10 @@
 .sf-tree .sf-visitor { cursor: pointer; }
 .sf-tree .sf-visitor > :not(rect) { animation: sf-bob 3.2s ease-in-out infinite; animation-delay: inherit; }
 @keyframes sf-bob { 0%, 70%, 100% { translate: 0 0 } 80% { translate: 0 -3px } 90% { translate: 0 0 } }
+
+/* 聖誕樹的星星輕輕閃爍 */
+.sf-tree .sf-twinkle { animation: sf-tw 3.4s ease-in-out infinite; }
+@keyframes sf-tw { 0%, 100% { opacity: 1 } 50% { opacity: .72 } }
 
 /* 孩子模式入口：水壺搖一搖 */
 .sf-wiggle { animation: sf-wiggle 2.6s ease-in-out infinite; }

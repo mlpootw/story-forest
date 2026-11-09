@@ -148,8 +148,8 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
     }
     const sp = SPECIES[speciesId]
     const left = pendingBooks.length - 1
-    say(leaf.mag ? (leaf.unitEn && !leaf.sessions.some((s) => s.growth_shown_at && s.has_english) ? '讀了英文！森林訪客來了 🐰' : `花園開了一朵${flowerOf(ym).name} 🌸`)
-      : leaf.en && !leaf.shown ? '森林訪客來了！點點牠 🐰'
+    say(leaf.mag ? (leaf.unitEn && !leaf.sessions.some((s) => s.growth_shown_at && s.has_english) ? (ym.slice(5, 7) === '12' ? '讀了英文！聖誕朋友來了 🎅' : '讀了英文！森林訪客來了 🐰') : `花園開了一朵${flowerOf(ym).name} 🌸`)
+      : leaf.en && !leaf.shown ? (ym.slice(5, 7) === '12' ? '聖誕朋友來了！點點看 🎅' : '森林訪客來了！點點牠 🐰')
         : popLeaves.length ? `驚喜！${sp.verb ? '開出' : '結出'}${sp.fruitName}了！`
           : TREE_SETS[speciesId] ? (leaf.shown ? (TREE_SETS[speciesId].shine || `${TREE_SETS[speciesId].fruitName}變熟了 ✨`) : (TREE_SETS[speciesId].grow || `結出一顆${TREE_SETS[speciesId].fruitName}！`))
             : leaf.shown ? '葉子亮起來了 ✨' : '長出一片新葉子！')

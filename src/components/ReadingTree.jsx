@@ -79,7 +79,8 @@ function buildBranchy(seed, stage, sp) {
 const GROUND = 336
 function buildArt(stage, set, n) {
   const pick = stage >= 3 ? set.big : n >= 4 && set.mid ? set.mid : set.young
-  const w = stage >= 3 ? (pick.w ? pick.w[stage] : { 3: 240, 4: 290, 5: 330 }[stage]) : (pick === set.mid ? (pick.h || 178) : stage === 1 ? 112 : 140) / pick.ratio
+  const z = set.zoom ? set.zoom[stage] || 1 : 1
+  const w = z * (stage >= 3 ? (pick.w ? pick.w[stage] : { 3: 240, 4: 290, 5: 330 }[stage]) : (pick === set.mid ? (pick.h || 178) : stage === 1 ? 112 : 140) / pick.ratio)
   const h = w * pick.ratio
   const x0 = BASE_X - w / 2
   const y0 = GROUND - h
@@ -150,7 +151,7 @@ function renderTree({ seed, ym, speciesId, leaves: allLeaves, pendingIds = [], g
   // 12 月：雪人站在樹旁邊（掛點會避開雪人）
   const snow = month === 12 ? (() => {
     const w = [34, 38, 44, 52, 58][Math.max(0, stage - 1)] || 40
-    const cx = BASE_X - [64, 84, 98, 104, 112][Math.max(0, stage - 1)]
+    const cx = BASE_X - [64, 84, 98, 104, 112][Math.max(0, stage - 1)] * (stage <= 2 ? 1.12 : 1.05)
     return { w, h: w * 1.31, cx, x0: cx - w / 2 - 3, x1: cx + w / 2 + 3, y0: 341 - w * 1.31 - 4 }
   })() : null
   const snowman = snow ? `<image class="sf-snowman" href="${art('snowman')}" x="${f1(snow.cx - snow.w / 2)}" y="${f1(341 - snow.h)}" width="${snow.w}" height="${f1(snow.h)}"/>` : ''
@@ -214,9 +215,10 @@ function renderTree({ seed, ym, speciesId, leaves: allLeaves, pendingIds = [], g
     const bx = W * (0.5 - FBn.stem[0]), by = H * (0.5 - FBn.stem[1]) // 果實中心（相對於果蒂尖端）
     if (!set.noCover && !pend && hv % 3 === 0 && ring === 0) covers.push(`<ellipse cx="${f1(px - sz * 0.1)}" cy="${f1(py)}" rx="${f1(sz * 0.62)}" ry="${f1(sz * 0.4)}" fill="url(#cvg)"/>`)
     const cls = ['sf-leaf', pend ? 'sf-bud sf-artbud' : '', growIds.includes(l.id) ? 'sf-grow sf-artgrow' : '', flashIds.includes(l.id) ? 'sf-flash' : ''].join(' ')
+    const tw = name === 'orn-star' ? ` sf-twinkle" style="animation-delay:-${(hv % 30) / 10}s` : ''
     const img = pend && !(set.boxes && set.boxes[name])
       ? `<image class="sf-fruitimg" href="${href}" x="${f1(-sz * 0.5)}" y="${f1(-sz * 0.1)}" width="${f1(sz)}" height="${f1(sz)}"/>`
-      : `<image class="sf-fruitimg" href="${href}" x="${f1(-W * FBn.stem[0])}" y="${f1(-H * FBn.stem[1])}" width="${f1(W)}" height="${f1(H)}"/>`
+      : `<image class="sf-fruitimg${tw}" href="${href}" x="${f1(-W * FBn.stem[0])}" y="${f1(-H * FBn.stem[1])}" width="${f1(W)}" height="${f1(H)}"/>`
     const cx = pend && !(set.boxes && set.boxes[name]) ? 0 : bx, cy = pend && !(set.boxes && set.boxes[name]) ? sz * 0.4 : by
     return `<g class="${cls}" data-book="${l.id}" transform="translate(${f1(px)},${f1(py)}) rotate(${tilt})"><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(sz * 0.6)}" fill="transparent"/>${ripe && !pend ? `<circle class="sf-glow" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(sz * 0.66)}" fill="url(#glow)"/>` : ''}<g class="sf-in"><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(sz * 0.42)}" fill="#FFF6D8" opacity=".3" filter="url(#blur3)"/>${img}</g></g>`
   }).join('') : ''
@@ -247,13 +249,23 @@ function renderTree({ seed, ym, speciesId, leaves: allLeaves, pendingIds = [], g
 
   const canopy = stage <= 1 ? [BASE_X + 40, BASE_Y - 70] : [T.top.x + 30, T.top.y + 10]
   // 樹下一次只來 2 隻動物（這個月的小動物＋英文訪客裡挑），才不會擠
-  const critter = !shown || shown.includes('season') ? animal(season.animal, { trunkX: BASE_X, groundY: 336, canopy }) : ''
+  const critter = month === 12 ? '' : !shown || shown.includes('season') ? animal(season.animal, { trunkX: BASE_X, groundY: 336, canopy }) : ''
   // 英文書帶來的森林訪客，站在草地上
-  const spots = stage <= 1 ? [112, 248, 140, 222, 98, 262] : stage === 2 ? [76, 284, 112, 250, 94, 268] : [42, 318, 92, 270, 20, 342]
+  const spots = month === 12 ? [BASE_X + [84, 98, 112, 122, 130][Math.max(0, stage - 1)]] : stage <= 1 ? [112, 248, 140, 222, 98, 262] : stage === 2 ? [76, 284, 112, 250, 94, 268] : [42, 318, 92, 270, 20, 342]
   const guests = visitors.filter((v) => !shown || shown.includes(v.id)).slice(0, 6).map((v, i) => {
     const x = spots[i] + ((hashStr(v.id) % 9) - 4)
     const flip = x > BASE_X ? -1 : 1
     return `<g class="sf-visitor" data-visitor="${v.id}" transform="translate(${x},${334 + (i % 2) * 3}) scale(${flip * 0.95},0.95)" style="animation-delay:${(i * 0.7).toFixed(1)}s"><rect x="-26" y="-62" width="52" height="64" fill="transparent"/>${visitorSvg(v.animal)}</g>`
+  }).join('')
+  // 12 月：每讀滿 5 本，樹下多一個禮物盒（最多 5 個）
+  const giftN = month === 12 && T.img ? Math.min(5, Math.floor(leaves.filter((l) => !pendingIds.includes(l.id)).length / 5)) : 0
+  const GIFTS = [['gift-cream', 25], ['gift-yellow', 23], ['gift-blue', 23], ['gift-yellow', 22], ['gift-cream', 21]]
+  const GX = [12, -14, 38, -40, 64] // 樹正下方整排排開（雪人在左、聖誕角色在右）
+  const gifts = Array.from({ length: giftN }, (_, i) => {
+    const [nm, w] = GIFTS[i]
+    const gw = w * (stage <= 1 ? 1 : 1.1), gh = gw * 1.065
+    const x = BASE_X + GX[i]
+    return `<g class="sf-gift" transform="translate(${x},${344 - (i % 2)})"><ellipse cx="0" cy="0" rx="${f1(gw * 0.52)}" ry="2.2" fill="#3E3832" opacity=".14"/><image href="${art(nm)}" x="${f1(-gw / 2)}" y="${f1(-gh + 2)}" width="${f1(gw)}" height="${f1(gh)}"/></g>`
   }).join('')
   // 雜誌花圃：每讀一次雜誌，樹下就開一朵新的花（同一本雜誌同一個顏色）
   const MF = flowerOf(ym)
@@ -294,6 +306,8 @@ function renderTree({ seed, ym, speciesId, leaves: allLeaves, pendingIds = [], g
   })() : ''
   // 12 月：草地上蓋一層白雪（樹和花畫在雪的上面）
   const snowGround = month === 12 ? `<g filter="url(#blur3)"><path d="M4,334 Q40,324 82,331 T160,330 T244,331 T322,327 T356,333 L356,352 L4,352Z" fill="#C9DCE6" opacity=".8"/><path d="M4,332 Q40,322 82,329 T160,328 T244,329 T322,325 T356,331 L356,350 L4,350Z" fill="#fff" opacity=".92"/></g><g opacity=".9"><ellipse cx="70" cy="339" rx="26" ry="4" fill="#fff"/><ellipse cx="290" cy="340" rx="30" ry="4.5" fill="#fff"/><ellipse cx="180" cy="343" rx="40" ry="3.5" fill="#F2F7FA"/></g>` : ''
+  // 12 月：樹後面一圈暖黃色的聖誕燈光
+  const warm = month === 12 && T.img ? `<ellipse cx="${BASE_X}" cy="${f1(T.img.y + T.img.h * 0.52)}" rx="${f1(T.img.w * 0.82)}" ry="${f1(T.img.h * 0.68)}" fill="url(#warm)"/>` : ''
   const seedEl = stage === 0 ? `<ellipse cx="${BASE_X}" cy="326" rx="7" ry="4.5" fill="#98775F" opacity=".8" filter="url(#wc)"/>` : ''
 
   return `
@@ -306,12 +320,13 @@ function renderTree({ seed, ym, speciesId, leaves: allLeaves, pendingIds = [], g
       <filter id="crw" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency=".07" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter>
       <pattern id="t-hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><line x1="0" y1="0" x2="0" y2="3" stroke="#fff" stroke-width=".9" stroke-opacity=".55"/></pattern>
       <pattern id="t-grass" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><line x1="0" y1="0" x2="0" y2="5" stroke="#86AE74" stroke-width="2.2" stroke-opacity=".55"/></pattern>
+      <radialGradient id="warm"><stop offset="0" stop-color="#FFD98A" stop-opacity=".55"/><stop offset=".55" stop-color="#FFE3A8" stop-opacity=".25"/><stop offset="1" stop-color="#FFE3A8" stop-opacity="0"/></radialGradient>
       <radialGradient id="glow"><stop offset="0" stop-color="#F6E3A4" stop-opacity=".95"/><stop offset="1" stop-color="#F6E3A4" stop-opacity="0"/></radialGradient>
       <radialGradient id="fruitShade" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3E3832" stop-opacity=".22"/></radialGradient>
     </defs>
     <image href="${art('grass')}" x="4" y="321" width="352" height="46" preserveAspectRatio="none"/>${snowGround}
-    ${wash}${T.img ? `<image href="${T.img.href}" x="${f1(T.img.x)}" y="${f1(T.img.y)}" width="${f1(T.img.w)}" height="${f1(T.img.h)}" preserveAspectRatio="none"/>` : `<g filter="url(#cr)">${brOut}</g><g filter="url(#wcT)">${br}${fronds}</g>`}${seedEl}${month === 12 ? '' : `<g filter="url(#cr)">${grass}</g>`}<g filter="url(#crw)">${groundFlowers}</g>${bed}${basket}
-    <g>${lv}</g>${snowman}<g>${fruits}</g><g filter="url(#crw)">${blooms}</g>${critter}<g filter="url(#crw)">${guests}</g>`
+    ${warm}${wash}${T.img ? `<image href="${T.img.href}" x="${f1(T.img.x)}" y="${f1(T.img.y)}" width="${f1(T.img.w)}" height="${f1(T.img.h)}" preserveAspectRatio="none"/>` : `<g filter="url(#cr)">${brOut}</g><g filter="url(#wcT)">${br}${fronds}</g>`}${seedEl}${month === 12 ? '' : `<g filter="url(#cr)">${grass}</g>`}<g filter="url(#crw)">${groundFlowers}</g>${bed}${basket}
+    <g>${lv}</g>${snowman}${gifts}<g>${fruits}</g><g filter="url(#crw)">${blooms}</g>${critter}<g filter="url(#crw)">${guests}</g>`
 }
 
 const EMPTY = []
@@ -319,18 +334,22 @@ export default function ReadingTree({ childId, ym, speciesId, leaves, zoom, onPi
   // 每次打開隨機挑 2 隻動物；剛被英文書叫來的訪客一定出現
   const [luck] = useState(() => Math.random())
   const shown = useMemo(() => {
-    const pool = ['season', ...visitors.map((v) => v.id)]
-    if (pool.length <= maxAnimals) return null
+    const xmas = ym.slice(5, 7) === '12'
+    const pool = xmas ? visitors.map((v) => v.id) : ['season', ...visitors.map((v) => v.id)]
+    if (xmas && !pool.length) return []
+    if (pool.length <= (xmas ? 1 : maxAnimals)) return null
     const order = pool.map((id) => ({ id, k: hashStr(id + luck) })).sort((a, b) => a.k - b.k).map((x) => x.id)
-    const pick = mustShow && pool.includes(mustShow) ? [mustShow, ...order.filter((x) => x !== mustShow)] : order
-    return pick.slice(0, maxAnimals)
-  }, [visitors, luck, mustShow, maxAnimals])
+    const must = pool.includes('xmas-eve') ? 'xmas-eve' : mustShow
+    const pick = must && pool.includes(must) ? [must, ...order.filter((x) => x !== must)] : order
+    return pick.slice(0, xmas ? 1 : maxAnimals)
+  }, [visitors, luck, mustShow, maxAnimals, ym])
   const svg = useMemo(
     () => renderTree({ seed: childId + '|' + ym + '|' + speciesId, ym, speciesId, leaves, pendingIds, harvestedIds, hideIds, growIds, flashIds, popIds, visitors, flowers, shown }),
     [childId, ym, speciesId, leaves, pendingIds, harvestedIds, hideIds, growIds, flashIds, popIds, visitors, flowers, shown]
   )
   const stage = stageOf(leaves.length)
-  const vb = stage <= 1 ? '80 200 200 152' : stage === 2 ? '50 160 260 192' : '0 0 360 352'
+  const dec = ym.slice(5, 7) === '12'
+  const vb = dec && stage <= 1 ? '64 170 232 182' : dec && stage === 2 ? '36 126 288 226' : stage <= 1 ? '80 200 200 152' : stage === 2 ? '50 160 260 192' : '0 0 360 352'
   return (
     <div
       className={`sf-tree relative rounded-[18px] ${zoom ? 'overflow-x-auto' : 'overflow-hidden'} ${className || '-mx-2'}`}

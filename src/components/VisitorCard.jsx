@@ -19,7 +19,9 @@ export default function VisitorCard({ visitor, onClose, autoSpeak = true }) {
           <div className="text-base text-ink-soft">{word.zh}</div>
           <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-sage-mist px-3 py-1 text-[13px] text-sage-deep">🔊 再聽一次</div>
         </button>
-        <p className="mt-3 text-[12.5px] leading-relaxed text-ink-soft">牠是跟著英文書<br /><b className="text-ink">《{leaf.book.title}》</b>來的</p>
+        {visitor.special
+          ? <p className="mt-3 text-[12.5px] leading-relaxed text-ink-soft">今天是聖誕節的日子，<br /><b className="text-ink">聖誕老公公來找你玩！</b></p>
+          : <p className="mt-3 text-[12.5px] leading-relaxed text-ink-soft">{info.id === 'elf' || info.id === 'santa' ? '他' : '牠'}是跟著英文書<br /><b className="text-ink">《{leaf.book.title}》</b>來的</p>}
         <button className="btn-ghost mt-4 w-full" onClick={onClose}>好喔！</button>
       </div>
     </div>

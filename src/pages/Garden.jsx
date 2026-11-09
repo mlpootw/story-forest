@@ -159,7 +159,7 @@ export default function Garden({ child, family, refresh, onChanged, onAdd }) {
           <p className="mt-1 flex items-center justify-center gap-1 text-center text-[13px] text-bark"><img src={art('snail')} alt="" className="h-8 w-auto shrink-0" />{Number(ym.slice(5, 7))} 月的森林：{season.text}</p>
 
           {visitors.length > 0 && (
-            <div className="sf-frame sf-frame-sun mt-3 rounded-[22px] bg-[#FBF0D9] px-4 py-3 text-center text-[14px]">有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></div>
+            <div className="sf-frame sf-frame-sun mt-3 rounded-[22px] bg-[#FBF0D9] px-4 py-3 text-center text-[14px]">{ym.slice(5, 7) === '12' ? <>聖誕朋友來了！<br /><span className="hint">讀英文書，小精靈、小麋鹿、聖誕老公公會輪流來教一個英文單字。點點看他們。</span></> : <>有 <b>{visitors.length}</b> 位英文森林訪客來了！<br /><span className="hint">每讀一本英文書，就會有一位小動物來教一個英文單字。點點看牠們。</span></>}</div>
           )}
           {fruits > 0 && !TREE_SETS[speciesId] && (
             <div className="notice mt-3 text-center">樹上{sp.verb || '結了'} <b>{fruits}</b> {sp.unit || '顆'}{sp.fruitName}！<br /><span className="hint">重讀的書、爸媽標成最喜歡的書，還有森林偶爾送來的驚喜，都會{sp.verb ? '開花' : '結果實'}。點點看是哪一本。</span></div>

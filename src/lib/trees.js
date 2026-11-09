@@ -53,7 +53,7 @@ export const SEASONS = {
   9: { flower: 'goldenrain', animal: 'redfly', text: '台灣欒樹開黃花，紅蜻蜓來了' },
   10: { flower: 'goldenrain_red', animal: 'squirrel', text: '欒樹的果實變紅了，松鼠忙著找食物' },
   11: { flower: 'fallen', animal: 'sparrow', text: '樹下有落葉，小麻雀來散步' },
-  12: { flower: 'snow', animal: 'sparrow', text: '下雪了，小麻雀躲在樹下取暖' }
+  12: { flower: 'snow', animal: 'none', text: '下雪了，聖誕樹下有禮物，聖誕朋友也來了' }
 }
 
 const petals = (n, r, color, rx = 2.4, ry = 3.2) =>
