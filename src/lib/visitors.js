@@ -13,7 +13,8 @@ export const VISITORS = [
   { id: 'fox', zh: '小狐狸', en: 'Fox' },
   { id: 'bear', zh: '小熊', en: 'Bear' },
   { id: 'frog', zh: '小青蛙', en: 'Frog' },
-  { id: 'deer', zh: '小鹿', en: 'Deer' }
+  { id: 'deer', zh: '小鹿', en: 'Deer' },
+  { id: 'sheep', zh: '笑笑羊', en: 'Sheep' }
 ]
 
 // 判斷是不是英文書：家長手動標記優先，其次看書籍語言，最後看書名是不是英文字母
@@ -75,7 +76,7 @@ export function speak(text) {
 }
 
 /* ---------- 動物圖（以腳底中心為原點）：繪本風插圖 ---------- */
-const VISITOR_IDS = ['rabbit', 'hedgehog', 'fox', 'bear', 'frog', 'deer', 'elf', 'reindeer', 'santa']
+const VISITOR_IDS = ['rabbit', 'hedgehog', 'fox', 'bear', 'frog', 'deer', 'sheep', 'elf', 'reindeer', 'santa']
 export function visitorSvg(id) {
   if (!VISITOR_IDS.includes(id)) return ''
   return `<image href="${art(id)}" x="-29" y="-64" width="58" height="66" preserveAspectRatio="xMidYMax meet"/>`
