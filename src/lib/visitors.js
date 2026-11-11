@@ -4,7 +4,7 @@ import { art } from './art'
 // 12 月：聖誕角色輪流來教單字
 export const XMAS_VISITORS = [
   { id: 'elf', zh: '小精靈', en: 'Elf' },
-  { id: 'reindeer', zh: '小麋鹿', en: 'Reindeer' },
+  { id: 'reindeer', zh: '小馴鹿', en: 'Reindeer' },
   { id: 'santa', zh: '聖誕老公公', en: 'Santa' }
 ]
 export const VISITORS = [

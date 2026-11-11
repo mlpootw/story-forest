@@ -12,6 +12,7 @@ import Cover from './Cover'
 import { Avatar } from './ui'
 import { fruitReason } from '../lib/fruit'
 import GameMenu from './GameMenu'
+import AnimalBook from './AnimalBook'
 import HarvestGame from './HarvestGame'
 import Snow from './Snow'
 import { HARVEST_AT, getHarvested, addHarvested } from '../lib/harvest'
@@ -37,6 +38,7 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
   const [weather, setWeather] = useState('day') // day | rain | night
   const [reaction, setReaction] = useState(null) // { m, key }
   const [game, setGame] = useState(false)
+  const [book, setBook] = useState(false)
   const xmas = ym.slice(5, 7) === '12' // 12 月整個月都下雪
   const [harvest, setHarvest] = useState(false) // 芭樂收成遊戲
   const [harvested, setHarvested] = useState(() => getHarvested(child.id, ym))
@@ -206,15 +208,18 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
         </div>
 
         {choice && (
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex gap-1.5 rounded-full bg-paper-2 p-1" role="group" aria-label="換天氣">
+          <div className="mt-2 flex items-center justify-between gap-1.5">
+            <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="group" aria-label="換天氣">
               {[['day', '☀️', '晴天'], ['rain', xmas ? '❄️' : '🌧️', xmas ? '大雪' : '下雨'], ['night', '🌙', '晚上']].map(([k, e, t]) => (
                 <button key={k} aria-label={t} aria-pressed={weather === k} onClick={() => setWeather(k)}
                   className={`grid h-11 w-11 place-items-center rounded-full text-2xl transition active:scale-90 ${weather === k ? 'bg-paper-card shadow' : 'opacity-60'}`}>{e}</button>
               ))}
             </div>
-            <button onClick={() => { setPlayed(playedToday(child.id)); setGame(true) }} className="flex items-center gap-1.5 rounded-full bg-[#F3ECDA] py-2 pl-3 pr-4 font-hand text-lg font-bold shadow-[0_3px_0_#E2D3B0] active:translate-y-0.5 active:shadow-none" aria-label="小遊戲">
-              <span className="text-2xl">🎮</span>小遊戲
+            <button onClick={() => { setPlayed(playedToday(child.id)); setGame(true) }} className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#F3ECDA] py-2 pl-2.5 pr-3 font-hand text-base font-bold shadow-[0_3px_0_#E2D3B0] active:translate-y-0.5 active:shadow-none" aria-label="小遊戲">
+              <span className="text-xl">🎮</span>遊戲
+            </button>
+            <button onClick={() => setBook(true)} className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#E4EEDC] py-2 pl-2.5 pr-3 font-hand text-base font-bold shadow-[0_3px_0_#C5D6B7] active:translate-y-0.5 active:shadow-none" aria-label="動物圖鑑">
+              <span className="text-xl">🐾</span>圖鑑
             </button>
           </div>
         )}
@@ -308,6 +313,7 @@ export default function KidMode({ child, ym, speciesId, choice, rows, setRows, o
         <HarvestGame child={child} ym={ym} speciesId={speciesId} leaves={bookLeaves} flowers={bedFlowers} pendingIds={pendingIds} harvestedIds={harvested} targetIds={readyIds}
           onClose={() => setHarvest(false)} onDone={(ids) => { setHarvested(addHarvested(child.id, ym, ids)); setHarvest(false) }} />
       )}
+      {book && <AnimalBook child={child} onClose={() => setBook(false)} />}
       {game && <GameMenu child={child} leaves={leaves.filter((l) => l.shown)} total={total} earned={wateredUnitsToday(rows) * ROUNDS_PER_BOOK} played={played}
         onUseRound={() => setPlayed(addRound(child.id))} onClose={() => setGame(false)} />}
       {unlocked && (
